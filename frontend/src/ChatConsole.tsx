@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 type Message = {
@@ -23,6 +24,33 @@ function loadMessages(userId: string): Message[] {
   }
 }
 
+function formatMessageTime(id: string) {
+  const ts = Number(id.replace('msg-', ''))
+  if (!Number.isFinite(ts)) return ''
+  return new Date(ts)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    .replace(/\b(am|pm)\b/g, (match) => match.toUpperCase())
+}
+
+function EmptyStateIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-10 w-10 text-line-strong"
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M8 12a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4h-10l-6 4v-4H12a4 4 0 0 1-4-4v-8Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function ChatConsole() {
   const { token, user } = useAuth()
   const userId = user?.id ?? 'anonymous'
@@ -31,6 +59,8 @@ export function ChatConsole() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [isShort, setIsShort] = useState(true)
 
   useEffect(() => {
     setMessages(loadMessages(userId))
@@ -45,8 +75,25 @@ export function ChatConsole() {
   }
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const updateLayout = () => {
+      setIsShort(container.scrollHeight <= container.clientHeight)
+    }
+
+    updateLayout()
+    const observer = new ResizeObserver(updateLayout)
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [messages, isLoading, error])
+
+  useEffect(() => {
+    if (!isShort) {
+      scrollToBottom()
+    }
+  }, [messages, isLoading, isShort])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -112,70 +159,114 @@ export function ChatConsole() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && !error && (
-          <div className="flex items-center justify-center h-full text-slate-400">
-            <p>Start a conversation</p>
-          </div>
-        )}
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <header className="w-full shrink-0 border-b border-line bg-paper px-6 py-3">
+        <h2 className="font-semibold text-ink">Chat Console</h2>
+        <p className="text-xs text-ink-soft">
+          Every message and response is logged to the audit trail
+        </p>
+      </header>
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.type === 'user' ? 'justify-end' : 'justify-start'
-            }`}
-          >
+      <div
+        ref={messagesContainerRef}
+        className="min-h-0 w-full flex-1 overflow-y-auto bg-paper"
+      >
+        <div
+          className={`flex min-h-full w-full flex-col space-y-4 p-6 ${
+            isShort ? 'justify-center' : ''
+          }`}
+        >
+          {messages.length === 0 && !error && !isLoading && (
+            <div className="flex w-full flex-col items-center justify-center gap-3 text-center text-ink-soft">
+              <EmptyStateIcon />
+              <p className="text-sm">Start a conversation</p>
+            </div>
+          )}
+
+          {messages.map((message) => {
+            const messageTime = formatMessageTime(message.id)
+
+            return (
             <div
-              className={`max-w-sm px-4 py-3 rounded-2xl ${
-                message.type === 'user'
-                  ? 'bg-slate-900 text-white rounded-br-none'
-                  : 'bg-slate-200 text-slate-900 rounded-bl-none'
+              key={message.id}
+              className={`flex w-full flex-col ${
+                message.type === 'user' ? 'items-end' : 'items-start'
               }`}
             >
-              <p className="text-sm break-words">{message.text}</p>
-              {message.type === 'ai' && message.decisionId && (
-                <p className="text-xs text-slate-500 mt-2 font-mono">
-                  Logged: {message.decisionId.slice(0, 8)}...
-                </p>
+              <div
+                className={`max-w-sm px-5 py-3.5 rounded-2xl ${
+                  message.type === 'user'
+                    ? 'bg-ink text-paper-raised rounded-br-none'
+                    : 'rounded-bl-none border border-line bg-paper-raised text-ink shadow-sm'
+                }`}
+              >
+                <p className="text-sm break-words">{message.text}</p>
+                {message.type === 'ai' && message.decisionId && (
+                  <Link
+                    to={`/certificate/${message.decisionId}`}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brass-tint px-2 py-0.5 text-xs font-medium text-brass-dark transition-colors hover:bg-brass/20"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="h-3 w-3 shrink-0"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle cx="6" cy="6" r="4.75" stroke="currentColor" strokeWidth="1" />
+                      <path
+                        d="M3.75 6l1.25 1.25 2.75-2.75"
+                        stroke="currentColor"
+                        strokeWidth="1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="font-mono">{message.decisionId.slice(0, 8)}…</span>
+                  </Link>
+                )}
+              </div>
+              {messageTime && (
+                <span className="mt-1 font-mono text-xs text-ink-soft">{messageTime}</span>
               )}
             </div>
-          </div>
-        ))}
+            )
+          })}
 
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-slate-200 text-slate-900 px-4 py-3 rounded-2xl rounded-bl-none">
-              <p className="text-sm text-slate-500">Thinking…</p>
+          {isLoading && (
+            <div className="flex w-full flex-col items-start">
+              <div className="max-w-sm rounded-2xl rounded-bl-none border border-line bg-paper-raised px-5 py-3.5 text-ink shadow-sm">
+                <p className="text-sm text-ink-soft">Thinking…</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {error && (
-        <div className="px-6 py-3 bg-red-50 border-t border-red-200">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="w-full shrink-0 border-t border-rust/20 bg-rust-tint px-6 py-3">
+          <p className="text-sm text-rust">{error}</p>
         </div>
       )}
 
-      <div className="border-t border-slate-200 p-6">
-        <div className="flex gap-2">
+      <div className="w-full shrink-0 border-t border-line bg-paper-raised p-6">
+        <div className="flex w-full gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={isLoading}
             placeholder="Type your message... (Shift+Enter for new line)"
-            className="flex-1 px-4 py-3 border border-slate-300 rounded-lg resize-none disabled:bg-slate-100 disabled:text-slate-400"
+            className="flex-1 resize-none rounded-lg border border-line px-4 py-3 text-ink transition-shadow focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30 disabled:bg-paper disabled:text-ink-soft"
             rows={3}
           />
           <button
+            type="button"
             onClick={handleSendMessage}
             disabled={isLoading || !input.trim()}
-            className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed h-fit"
+            className="h-fit rounded-lg bg-ink px-6 py-3 font-medium text-paper-raised transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-ink-soft disabled:hover:bg-line-strong"
           >
             {isLoading ? 'Sending…' : 'Send'}
           </button>

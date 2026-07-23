@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 type AuditEntry = {
@@ -62,11 +63,27 @@ export function AuditTrail() {
       if (!response.ok) throw new Error('Failed to load entries')
       const data = await response.json()
       setEntries(data)
+      await hydrateReviewsFromEntries(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load entries')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const hydrateReviewsFromEntries = async (loadedEntries: AuditEntry[]) => {
+    const reviewEvents = loadedEntries.filter(
+      (entry) => entry.source_type === 'review_event' && entry.parent_decision_id
+    )
+
+    const grouped: Record<string, AuditEntry[]> = {}
+    for (const review of reviewEvents) {
+      const parentId = review.parent_decision_id!
+      if (!grouped[parentId]) grouped[parentId] = []
+      grouped[parentId].push(review)
+    }
+
+    setReviews((prev) => ({ ...prev, ...grouped }))
   }
 
   const loadReviews = async (decisionId: string) => {
@@ -196,335 +213,464 @@ export function AuditTrail() {
 
   const formatTimestamp = (ts: string) => {
     const date = new Date(ts)
-    return date.toLocaleString()
+    return date.toLocaleString().replace(/\b(am|pm)\b/g, (match) => match.toUpperCase())
   }
 
   const truncateText = (text: string, maxLen: number = 60) => {
     return text.length > maxLen ? text.slice(0, maxLen) + '…' : text
   }
 
+  const reviewedDecisionIds = useMemo(() => {
+    return new Set(
+      entries
+        .filter((entry) => entry.source_type === 'review_event' && entry.parent_decision_id)
+        .map((entry) => entry.parent_decision_id as string)
+    )
+  }, [entries])
+
   const getReviewStatus = (decisionId: string) => {
-    const entryReviews = reviews[decisionId] || []
-    return entryReviews.length > 0
+    if (reviewedDecisionIds.has(decisionId)) return true
+    return (reviews[decisionId] || []).length > 0
   }
 
-  return (
-    <div className="w-full space-y-4">
-      {/* Verify Chain Button and Status */}
-      <div className="flex gap-2 items-start">
-        <button
-          onClick={loadEntries}
-          disabled={isLoading}
-          className="px-4 py-2 bg-slate-100 text-slate-900 rounded font-medium hover:bg-slate-200 disabled:bg-slate-50"
-        >
-          {isLoading ? 'Refreshing…' : 'Refresh'}
-        </button>
-        <button
-          onClick={verifyChain}
-          disabled={isVerifying}
-          className="px-4 py-2 bg-slate-900 text-white rounded font-medium hover:bg-slate-800 disabled:bg-slate-400"
-        >
-          {isVerifying ? 'Verifying…' : 'Verify Chain Integrity'}
-        </button>
+  const isBrokenChainEntry = (decisionId: string) =>
+    verifyResult?.valid === false && verifyResult.broken_at_decision_id === decisionId
 
-        {verifyResult && (
-          <div
-            className={`flex-1 px-4 py-2 rounded text-sm font-medium ${
-              verifyResult.valid
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col gap-4">
+      {/* Controls toolbar */}
+      <div className="shrink-0 space-y-4 rounded-lg border border-line bg-paper p-4">
+        <div className="flex flex-wrap items-start gap-2">
+          <button
+            onClick={loadEntries}
+            disabled={isLoading}
+            className="rounded border border-line bg-paper-raised px-4 py-2 font-medium text-ink transition-colors hover:bg-paper disabled:opacity-50"
           >
-            {verifyResult.valid ? (
-              <span>✅ Chain verified — {filteredEntries.length} entries, no tampering detected</span>
-            ) : (
-              <span>
-                ❌ Chain broken at entry {verifyResult.broken_at_decision_id} — do not trust
-                records after this point
-              </span>
-            )}
+            {isLoading ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button
+            onClick={verifyChain}
+            disabled={isVerifying}
+            className="rounded bg-ink px-4 py-2 font-medium text-paper-raised transition-colors hover:bg-ink-2 disabled:opacity-50"
+          >
+            {isVerifying ? 'Verifying…' : 'Verify Chain Integrity'}
+          </button>
+
+          {verifyResult && (
+            <div
+              className={`min-w-[12rem] flex-1 rounded px-4 py-2 text-sm font-medium ${
+                verifyResult.valid
+                  ? 'border border-brass/25 bg-brass-tint text-brass-dark'
+                  : 'border border-rust/20 bg-rust-tint text-rust'
+              }`}
+            >
+              {verifyResult.valid ? (
+                <span>✅ Chain verified — {filteredEntries.length} entries, no tampering detected</span>
+              ) : (
+                <span>
+                  ❌ Chain broken at entry {verifyResult.broken_at_decision_id} — do not trust
+                  records after this point
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-ink-soft">
+          <span className="mr-3 inline-flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full border-2 border-line-strong bg-paper-raised" />
+            Unreviewed
+          </span>
+          <span className="mr-3 inline-flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full border-2 border-brass bg-brass/20" />
+            Reviewed
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-3 w-3 rounded-full border-2 border-rust bg-rust/10" />
+            Chain break
+          </span>
+        </p>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">
+                Search (input/output)
+              </label>
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Filter by text…"
+                className="w-full rounded border border-line bg-paper-raised px-3 py-2 text-sm text-ink focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">
+                Source Type
+              </label>
+              <select
+                value={filterSourceType}
+                onChange={(e) => setFilterSourceType(e.target.value)}
+                className="w-full rounded border border-line bg-paper-raised px-3 py-2 text-sm text-ink focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
+              >
+                <option value="">All types</option>
+                {sourceTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">
+                From Date
+              </label>
+              <input
+                type="datetime-local"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full rounded border border-line bg-paper-raised px-3 py-2 text-sm text-ink focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">
+                To Date
+              </label>
+              <input
+                type="datetime-local"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full rounded border border-line bg-paper-raised px-3 py-2 text-sm text-ink focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleExport('json')}
+              className="rounded border border-line bg-paper-raised px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+            >
+              Export JSON
+            </button>
+            <button
+              onClick={() => handleExport('csv')}
+              className="rounded border border-line bg-paper-raised px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
+            >
+              Export CSV
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
-        <div className="px-4 py-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+        <div className="shrink-0 rounded border border-rust/20 bg-rust-tint px-4 py-2 text-sm text-rust">
           {error}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="space-y-3 bg-white p-4 rounded-lg border border-slate-200">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Search (input/output)
-            </label>
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Filter by text…"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Source Type
-            </label>
-            <select
-              value={filterSourceType}
-              onChange={(e) => setFilterSourceType(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-            >
-              <option value="">All types</option>
-              {sourceTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              From Date
-            </label>
-            <input
-              type="datetime-local"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              To Date
-            </label>
-            <input
-              type="datetime-local"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleExport('json')}
-            className="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded font-medium"
-          >
-            Export JSON
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded font-medium"
-          >
-            Export CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Log Console */}
-      <div className="bg-slate-900 text-slate-100 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96 space-y-1 border border-slate-700">
+      {/* Ledger entries */}
+      <div className="min-h-0 flex-1 overflow-y-auto pl-1">
         {isLoading ? (
-          <p className="text-slate-400">Loading entries…</p>
+          <p className="px-2 py-4 text-sm text-ink-soft">Loading entries…</p>
         ) : filteredEntries.length === 0 ? (
-          <p className="text-slate-400">No entries found</p>
+          <p className="px-2 py-4 text-sm text-ink-soft">No entries found</p>
         ) : (
-          filteredEntries.map((entry) => (
-            <div key={entry.id}>
-              <button
-                onClick={() => handleExpandRow(entry.id, entry.decision_id)}
-                className="w-full text-left hover:bg-slate-800 px-2 py-1 rounded transition-colors cursor-pointer flex items-center justify-between"
-              >
-                <span>
-                  <span className="text-slate-400">[{formatTimestamp(entry.timestamp_utc)}]</span>{' '}
-                  <span className="text-green-300">{entry.user_display_name}</span> |{' '}
-                  <span className="text-blue-300">{entry.ai_system}</span> |{' '}
-                  <span className="text-yellow-300">{entry.source_type}</span> |{' '}
-                  <span className="text-slate-300">
-                    in: {truncateText(entry.input_text || entry.downstream_action, 40)}
-                  </span>
-                  {entry.source_type === 'chat_console' && entry.output_text && (
-                    <span className="text-cyan-300">
-                      {' '}
-                      → out: {truncateText(entry.output_text, 40)}
-                    </span>
-                  )}
-                </span>
-                {getReviewStatus(entry.decision_id) && (
-                  <span className="text-green-400 text-xs ml-2">✓ Reviewed</span>
-                )}
-              </button>
+          <div className="relative space-y-0 pb-2">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-4 bottom-4 left-[11px] w-px bg-line"
+            />
+            {filteredEntries.map((entry, index) => {
+              const isLast = index === filteredEntries.length - 1
+              const isExpanded = expandedId === entry.id
+              const isReviewed = getReviewStatus(entry.decision_id)
+              const isBroken = isBrokenChainEntry(entry.decision_id)
 
-              {expandedId === entry.id && (
-                <div className="bg-slate-800 mt-1 p-3 rounded text-slate-100 space-y-2 text-xs border-l-2 border-slate-600 ml-2">
-                  {/* Entry Details */}
-                  <div className="space-y-1 pb-2 border-b border-slate-700">
-                    <div>
-                      <span className="text-slate-400">Decision ID:</span>{' '}
-                      <span className="text-slate-200 font-mono">{entry.decision_id}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Timestamp:</span>{' '}
-                      <span className="text-slate-200">{entry.timestamp_utc}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">User:</span>{' '}
-                      <span className="text-slate-200">
-                        {entry.user_display_name} ({entry.user_id})
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">AI System:</span>{' '}
-                      <span className="text-slate-200">{entry.ai_system}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Model Version:</span>{' '}
-                      <span className="text-slate-200">{entry.model_version}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Source Type:</span>{' '}
-                      <span className="text-slate-200">{entry.source_type}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Input Source:</span>{' '}
-                      <span className="text-slate-200">{entry.input_source}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Policy Invoked:</span>{' '}
-                      <span className="text-slate-200">{entry.policy_invoked}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Input Text:</span>{' '}
-                      <span className="text-slate-200 break-words">{entry.input_text}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Output Text:</span>{' '}
-                      <span className="text-slate-200 break-words">{entry.output_text}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Reasoning:</span>{' '}
-                      <span className="text-slate-200 break-words">{entry.reasoning_summary}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Downstream Action:</span>{' '}
-                      <span className="text-slate-200">{entry.downstream_action}</span>
-                    </div>
-                    {entry.parent_decision_id && (
-                      <div>
-                        <span className="text-slate-400">Parent Decision:</span>{' '}
-                        <span className="text-slate-200 font-mono">{entry.parent_decision_id}</span>
-                      </div>
+              return (
+                <div key={entry.id} className="relative flex gap-4">
+                  <div className="relative flex w-6 shrink-0 justify-center">
+                    {!isLast && (
+                      <div
+                        aria-hidden="true"
+                        className="absolute top-6 bottom-0 left-1/2 w-px -translate-x-1/2 bg-line"
+                      />
                     )}
-                    <div>
-                      <span className="text-slate-400">Integrity Hash:</span>{' '}
-                      <span className="text-slate-200 font-mono text-xs break-all">
-                        {entry.entry_hash}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400">Previous Hash:</span>{' '}
-                      <span className="text-slate-200 font-mono text-xs break-all">
-                        {entry.prev_hash}
-                      </span>
-                    </div>
+                    <div
+                      aria-hidden="true"
+                      className={`relative z-10 mt-3 h-3 w-3 shrink-0 rounded-full border-2 bg-paper-raised ${
+                        isBroken
+                          ? 'border-rust bg-rust/15'
+                          : isReviewed
+                            ? 'border-brass bg-brass/25'
+                            : 'border-line-strong'
+                      }`}
+                    />
                   </div>
 
-                  {/* Reviews Section */}
-                  {(reviews[entry.decision_id] || []).length > 0 && (
-                    <div className="space-y-1 pb-2 border-b border-slate-700">
-                      <p className="text-slate-400 font-semibold">Reviews:</p>
-                      {(reviews[entry.decision_id] || []).map((review) => {
-                        const isApproved = review.downstream_action.includes('approved')
-                        return (
-                          <div key={review.id} className="pl-2 space-y-0.5">
-                            <div className="flex items-center gap-1">
-                              {isApproved ? (
-                                <span className="text-green-400">✓ Approved</span>
-                              ) : (
-                                <span className="text-red-400">🚩 Flagged</span>
-                              )}
-                              <span className="text-slate-400">by {review.user_display_name}</span>
-                            </div>
-                            <div className="text-slate-300 break-words">
-                              {review.output_text}
-                            </div>
-                            <div className="text-slate-500">
-                              {formatTimestamp(review.timestamp_utc)}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                  <div className="min-w-0 flex-1 pb-3">
+                    <div className="rounded-lg border border-line bg-paper-raised transition-shadow hover:shadow-sm">
+                      <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        onClick={() => handleExpandRow(entry.id, entry.decision_id)}
+                        className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-paper/60"
+                      >
+                        <span className="min-w-0 flex-1 space-y-1.5">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs text-ink-soft">
+                              {formatTimestamp(entry.timestamp_utc)}
+                            </span>
+                            <span className="font-medium text-ink">{entry.user_display_name}</span>
+                            <span className="rounded-full bg-line px-2 py-0.5 text-xs font-medium text-ink">
+                              {entry.source_type}
+                            </span>
+                            <Link
+                              to={`/certificate/${entry.decision_id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded-full bg-paper px-2 py-0.5 font-mono text-xs text-ink-soft transition-colors hover:bg-line hover:text-ink"
+                            >
+                              {entry.decision_id.slice(0, 8)}…
+                            </Link>
+                          </span>
+                          <span className="block text-sm text-ink-soft">
+                            <span className="text-ink-soft/80">{entry.ai_system}</span>
+                            {' · '}
+                            in: {truncateText(entry.input_text || entry.downstream_action, 40)}
+                            {entry.source_type === 'chat_console' && entry.output_text && (
+                              <>
+                                {' '}
+                                → out: {truncateText(entry.output_text, 40)}
+                              </>
+                            )}
+                          </span>
+                        </span>
 
-                  {/* Review Input */}
-                  {!getReviewStatus(entry.decision_id) && (
-                    <div className="space-y-1 pt-1">
-                      {reviewingId === entry.decision_id ? (
-                        <div className="space-y-1">
-                          <textarea
-                            value={reviewComment}
-                            onChange={(e) => setReviewComment(e.target.value)}
-                            placeholder="Enter review comment…"
-                            className="w-full px-2 py-1 bg-slate-700 text-slate-100 border border-slate-600 rounded text-xs resize-none"
-                            rows={2}
-                          />
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() =>
-                                submitReview(entry.decision_id, 'approved')
-                              }
-                              disabled={isSubmittingReview || !reviewComment.trim()}
-                              className="px-2 py-0.5 text-xs bg-green-600 hover:bg-green-500 disabled:bg-slate-600 rounded text-white font-medium"
-                            >
-                              ✓ Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                submitReview(entry.decision_id, 'flagged')
-                              }
-                              disabled={isSubmittingReview || !reviewComment.trim()}
-                              className="px-2 py-0.5 text-xs bg-red-600 hover:bg-red-500 disabled:bg-slate-600 rounded text-white font-medium"
-                            >
-                              🚩 Flag
-                            </button>
-                            <button
-                              onClick={() => {
-                                setReviewingId(null)
-                                setReviewComment('')
-                              }}
-                              className="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded text-white"
-                            >
-                              Cancel
-                            </button>
+                        <span className="flex shrink-0 items-center gap-2 self-center">
+                          {isReviewed && (
+                            <span className="rounded-full bg-emerald-tint px-2 py-0.5 text-xs font-medium text-emerald">
+                              ✓ Reviewed
+                            </span>
+                          )}
+                          {isBroken && (
+                            <span className="rounded-full bg-rust-tint px-2 py-0.5 text-xs font-medium text-rust">
+                              Broken
+                            </span>
+                          )}
+                          <svg
+                            aria-hidden="true"
+                            className={`h-4 w-4 text-ink-soft transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M4 6l4 4 4-4"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mx-4 mb-4 space-y-3 border-l-4 border-line-strong border-t border-line pt-3 pl-4 text-sm">
+                          {/* Entry Details */}
+                          <div className="space-y-1.5 border-b border-line pb-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs text-ink-soft">Decision ID:</span>{' '}
+                              <Link
+                                to={`/certificate/${entry.decision_id}`}
+                                className="font-mono break-all text-ink underline decoration-line-strong underline-offset-2 hover:text-ink-2"
+                              >
+                                {entry.decision_id}
+                              </Link>
+                              <Link
+                                to={`/certificate/${entry.decision_id}`}
+                                className="rounded border border-line bg-paper px-2 py-0.5 text-xs font-medium text-ink transition-colors hover:bg-paper-raised"
+                              >
+                                View certificate
+                              </Link>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Timestamp:</span>{' '}
+                              <span className="font-body text-ink">
+                                {formatTimestamp(entry.timestamp_utc)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">User:</span>{' '}
+                              <span className="font-body text-ink">
+                                {entry.user_display_name} ({entry.user_id})
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">AI System:</span>{' '}
+                              <span className="font-body text-ink">{entry.ai_system}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Model Version:</span>{' '}
+                              <span className="font-body text-ink">{entry.model_version}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Source Type:</span>{' '}
+                              <span className="font-body text-ink">{entry.source_type}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Input Source:</span>{' '}
+                              <span className="font-body text-ink">{entry.input_source}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Policy Invoked:</span>{' '}
+                              <span className="font-body text-ink">{entry.policy_invoked}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Input Text:</span>{' '}
+                              <span className="font-body break-words text-ink">{entry.input_text}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Output Text:</span>{' '}
+                              <span className="font-body break-words text-ink">{entry.output_text}</span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Reasoning:</span>{' '}
+                              <span className="font-body break-words text-ink">
+                                {entry.reasoning_summary}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Downstream Action:</span>{' '}
+                              <span className="font-body text-ink">{entry.downstream_action}</span>
+                            </div>
+                            {entry.parent_decision_id && (
+                              <div>
+                                <span className="font-mono text-xs text-ink-soft">Parent Decision:</span>{' '}
+                                <span className="font-body break-all text-ink">
+                                  {entry.parent_decision_id}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Integrity Hash:</span>{' '}
+                              <span className="font-body break-all text-xs text-ink">
+                                {entry.entry_hash}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-mono text-xs text-ink-soft">Previous Hash:</span>{' '}
+                              <span className="font-body break-all text-xs text-ink">
+                                {entry.prev_hash}
+                              </span>
+                            </div>
                           </div>
+
+                          {/* Reviews Section */}
+                          {(reviews[entry.decision_id] || []).length > 0 && (
+                            <div className="space-y-2 border-b border-line pb-3">
+                              <p className="font-mono text-xs font-semibold text-ink-soft">Reviews:</p>
+                              {(reviews[entry.decision_id] || []).map((review) => {
+                                const isApproved = review.downstream_action.includes('approved')
+                                return (
+                                  <div key={review.id} className="space-y-1 pl-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {isApproved ? (
+                                        <span className="rounded-full bg-emerald-tint px-2 py-0.5 text-xs font-medium text-emerald">
+                                          ✓ Approved
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-full bg-rust-tint px-2 py-0.5 text-xs font-medium text-rust">
+                                          🚩 Flagged
+                                        </span>
+                                      )}
+                                      <span className="font-body text-sm text-ink-soft">
+                                        by {review.user_display_name}
+                                      </span>
+                                    </div>
+                                    <div className="font-body break-words text-ink">
+                                      {review.output_text}
+                                    </div>
+                                    <div className="font-mono text-xs text-ink-soft">
+                                      {formatTimestamp(review.timestamp_utc)}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Review Input */}
+                          {!isReviewed && (
+                            <div className="space-y-1 pt-1">
+                              {reviewingId === entry.decision_id ? (
+                                <div className="space-y-1">
+                                  <textarea
+                                    value={reviewComment}
+                                    onChange={(e) => setReviewComment(e.target.value)}
+                                    placeholder="Enter review comment…"
+                                    className="w-full resize-none rounded border border-line bg-paper px-2 py-1 text-xs text-ink focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() =>
+                                        submitReview(entry.decision_id, 'approved')
+                                      }
+                                      disabled={isSubmittingReview || !reviewComment.trim()}
+                                      className="rounded bg-emerald px-2 py-0.5 text-xs font-medium text-paper-raised transition-colors hover:bg-emerald/90 disabled:opacity-50"
+                                    >
+                                      ✓ Approve
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        submitReview(entry.decision_id, 'flagged')
+                                      }
+                                      disabled={isSubmittingReview || !reviewComment.trim()}
+                                      className="rounded bg-rust px-2 py-0.5 text-xs font-medium text-paper-raised transition-colors hover:bg-rust/90 disabled:opacity-50"
+                                    >
+                                      🚩 Flag
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setReviewingId(null)
+                                        setReviewComment('')
+                                      }}
+                                      className="rounded border border-line bg-paper px-2 py-0.5 text-xs text-ink transition-colors hover:bg-paper-raised"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setReviewingId(entry.decision_id)}
+                                  className="text-xs text-ink-soft underline transition-colors hover:text-ink"
+                                >
+                                  Add review…
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setReviewingId(entry.decision_id)}
-                          className="text-xs text-slate-400 hover:text-slate-200 underline"
-                        >
-                          Add review…
-                        </button>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))
+              )
+            })}
+          </div>
         )}
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="shrink-0 text-sm text-ink-soft">
         Showing {filteredEntries.length} of {entries.filter(e => e.source_type !== 'review_event').length} entries
       </p>
     </div>

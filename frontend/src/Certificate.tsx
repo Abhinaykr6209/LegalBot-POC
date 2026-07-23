@@ -58,16 +58,20 @@ export function Certificate() {
   }, [decision_id, token, isAuthenticated, navigate])
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading audit entry…</div>
+    return (
+      <div className="min-h-screen bg-paper p-8 text-center text-ink-soft">
+        Loading audit entry…
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="text-red-600 mb-4">{error}</div>
+      <div className="min-h-screen bg-paper p-8">
+        <div className="mb-4 text-rust">{error}</div>
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800"
+          className="rounded bg-ink px-4 py-2 text-paper-raised transition-colors hover:bg-ink-2"
         >
           Back to Audit Trail
         </button>
@@ -76,166 +80,197 @@ export function Certificate() {
   }
 
   if (!entry) {
-    return <div className="p-8 text-center">Entry not found</div>
+    return (
+      <div className="min-h-screen bg-paper p-8 text-center text-ink-soft">
+        Entry not found
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 pb-8 border-b border-slate-200">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Audit Certificate</h1>
-          <p className="text-slate-600">Official Record of AI System Activity</p>
-          <button
-            onClick={() => navigate('/')}
-            className="mt-4 text-sm text-slate-600 hover:text-slate-900 underline"
-          >
-            ← Back to Audit Trail
-          </button>
-        </div>
-
-        {/* Certificate Content */}
-        <div className="space-y-6">
-          {/* Identity Section */}
-          <div className="border border-slate-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Entry Identity</h2>
-            <div className="grid grid-cols-2 gap-6">
+    <div className="min-h-screen bg-paper p-6 md:p-8">
+      <div className="certificate-document mx-auto max-w-4xl border-4 border-line-strong p-1">
+        <div className="certificate-inner border border-line-strong bg-paper-raised p-8 md:p-12 lg:p-14">
+          {/* Header */}
+          <div className="mb-10 border-b border-line pb-8">
+            <div className="flex items-start gap-5">
+              <svg
+                aria-hidden="true"
+                className="certificate-seal h-14 w-14 shrink-0 text-brass"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2" />
+                <circle cx="24" cy="24" r="14" stroke="currentColor" strokeWidth="1" strokeOpacity="0.5" />
+                <path
+                  d="M16 24.5l5 5 11-12"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
               <div>
-                <p className="text-sm font-medium text-slate-600">Decision ID</p>
-                <p className="text-base font-mono text-slate-900 break-all">
-                  {entry.decision_id}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">Timestamp (UTC)</p>
-                <p className="text-base text-slate-900">
-                  {new Date(entry.timestamp_utc).toLocaleString()}
-                </p>
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl">
+                  Certificate of Record
+                </h1>
+                <p className="mt-1 text-ink-soft">Official Record of AI System Activity</p>
               </div>
             </div>
-          </div>
-
-          {/* User & System Section */}
-          <div className="border border-slate-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">User & System</h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-slate-600">User ID</p>
-                <p className="text-base text-slate-900">{entry.user_id}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">User Display Name</p>
-                <p className="text-base text-slate-900">{entry.user_display_name}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">AI System</p>
-                <p className="text-base text-slate-900">{entry.ai_system}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">Model Version</p>
-                <p className="text-base text-slate-900">{entry.model_version}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">Source Type</p>
-                <p className="text-base text-slate-900">{entry.source_type}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-600">Input Source</p>
-                <p className="text-base text-slate-900">{entry.input_source}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Policy Section */}
-          <div className="border border-slate-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Policy & Governance</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-slate-600">Policy Invoked</p>
-                <p className="text-base text-slate-900">{entry.policy_invoked}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Content Section */}
-          <div className="border border-slate-200 rounded-lg p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Content</h2>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Input Text</p>
-              <p className="text-base text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded border border-slate-200">
-                {entry.input_text}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Output Text</p>
-              <p className="text-base text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded border border-slate-200">
-                {entry.output_text}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Reasoning Summary</p>
-              <p className="text-base text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded border border-slate-200">
-                {entry.reasoning_summary}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Downstream Action</p>
-              <p className="text-base text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded border border-slate-200">
-                {entry.downstream_action}
-              </p>
-            </div>
-          </div>
-
-          {/* Integrity Section */}
-          <div className="border border-slate-200 rounded-lg p-6 space-y-4 bg-slate-50">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Integrity Verification</h2>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Entry Hash (SHA-256)</p>
-              <p className="text-xs font-mono text-slate-900 break-all bg-white p-3 rounded border border-slate-200">
-                {entry.entry_hash}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Previous Hash (SHA-256)</p>
-              <p className="text-xs font-mono text-slate-900 break-all bg-white p-3 rounded border border-slate-200">
-                {entry.prev_hash}
-              </p>
-            </div>
-
-            {entry.parent_decision_id && (
-              <div>
-                <p className="text-sm font-medium text-slate-600 mb-2">Parent Decision ID</p>
-                <p className="text-xs font-mono text-slate-900 break-all">
-                  {entry.parent_decision_id}
-                </p>
-              </div>
-            )}
-
-            <p className="text-xs text-slate-600 pt-2">
-              This entry is part of an immutable hash chain. Each entry's hash incorporates the
-              previous entry's hash, creating a tamper-evident audit trail.
-            </p>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-12 pt-6 border-t border-slate-200 text-center text-sm text-slate-600">
-            <p>Generated: {new Date().toLocaleString()} UTC</p>
-            <p className="mt-2 text-xs">
-              This certificate is generated from immutable audit records. Suitable for sharing with
-              outside counsel and regulatory bodies.
-            </p>
             <button
-              onClick={() => window.print()}
-              className="mt-4 px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800 text-sm font-medium"
+              onClick={() => navigate('/')}
+              className="no-print mt-5 text-sm text-ink-soft underline transition-colors hover:text-ink"
             >
-              Print / Export as PDF
+              ← Back to Audit Trail
             </button>
+          </div>
+
+          {/* Certificate Content */}
+          <div className="space-y-6">
+            {/* Identity Section */}
+            <div className="rounded-lg border border-line p-6">
+              <h2 className="font-display mb-4 text-lg font-semibold text-ink">Entry Identity</h2>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">Decision ID</p>
+                  <p className="mt-1 break-all font-mono text-base text-ink">
+                    {entry.decision_id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">Timestamp (UTC)</p>
+                  <p className="mt-1 text-base text-ink">
+                    {new Date(entry.timestamp_utc).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* User & System Section */}
+            <div className="rounded-lg border border-line p-6">
+              <h2 className="font-display mb-4 text-lg font-semibold text-ink">User & System</h2>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">User ID</p>
+                  <p className="mt-1 text-base text-ink">{entry.user_id}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">User Display Name</p>
+                  <p className="mt-1 text-base text-ink">{entry.user_display_name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">AI System</p>
+                  <p className="mt-1 text-base text-ink">{entry.ai_system}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">Model Version</p>
+                  <p className="mt-1 text-base text-ink">{entry.model_version}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">Source Type</p>
+                  <p className="mt-1 text-base text-ink">{entry.source_type}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-ink-soft">Input Source</p>
+                  <p className="mt-1 text-base text-ink">{entry.input_source}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Policy Section */}
+            <div className="rounded-lg border border-line p-6">
+              <h2 className="font-display mb-4 text-lg font-semibold text-ink">
+                Policy & Governance
+              </h2>
+              <div>
+                <p className="text-sm font-medium text-ink-soft">Policy Invoked</p>
+                <p className="mt-1 text-base text-ink">{entry.policy_invoked}</p>
+              </div>
+            </div>
+
+            {/* Content Section */}
+            <div className="space-y-4 rounded-lg border border-line p-6">
+              <h2 className="font-display text-lg font-semibold text-ink">Content</h2>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Input Text</p>
+                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
+                  {entry.input_text}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Output Text</p>
+                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
+                  {entry.output_text}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Reasoning Summary</p>
+                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
+                  {entry.reasoning_summary}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Downstream Action</p>
+                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
+                  {entry.downstream_action}
+                </p>
+              </div>
+            </div>
+
+            {/* Integrity Section */}
+            <div className="space-y-4 rounded-lg border border-line border-l-4 border-l-brass bg-brass-tint/40 p-6">
+              <h2 className="font-display text-lg font-semibold text-ink">
+                Integrity Verification
+              </h2>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Entry Hash (SHA-256)</p>
+                <p className="break-all rounded border border-line bg-paper-raised p-3 font-mono text-xs text-ink">
+                  {entry.entry_hash}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-ink-soft">Previous Hash (SHA-256)</p>
+                <p className="break-all rounded border border-line bg-paper-raised p-3 font-mono text-xs text-ink">
+                  {entry.prev_hash}
+                </p>
+              </div>
+
+              {entry.parent_decision_id && (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-ink-soft">Parent Decision ID</p>
+                  <p className="break-all font-mono text-xs text-ink">
+                    {entry.parent_decision_id}
+                  </p>
+                </div>
+              )}
+
+              <p className="pt-2 text-xs text-ink-soft">
+                This entry is part of an immutable hash chain. Each entry&apos;s hash incorporates the
+                previous entry&apos;s hash, creating a tamper-evident audit trail.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-10 border-t border-line pt-6 text-center text-sm text-ink-soft">
+              <p>Generated: {new Date().toLocaleString()} UTC</p>
+              <p className="mt-2 text-xs">
+                This certificate is generated from immutable audit records. Suitable for sharing with
+                outside counsel and regulatory bodies.
+              </p>
+              <button
+                onClick={() => window.print()}
+                className="no-print mt-4 rounded bg-ink px-4 py-2 text-sm font-medium text-paper-raised transition-colors hover:bg-ink-2"
+              >
+                Print / Export as PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -246,9 +281,21 @@ export function Certificate() {
           body {
             background: white;
           }
-          button {
-            display: none;
+          .certificate-document,
+          .certificate-inner,
+          .certificate-seal {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
+          .certificate-document {
+            border-color: #c3cad9;
+            padding: 0;
+          }
+          .certificate-inner {
+            border-color: #c3cad9;
+            padding: 2rem;
+          }
+          button,
           .no-print {
             display: none;
           }
