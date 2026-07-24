@@ -1,84 +1,123 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight,
-  BadgeCheck,
-  Check,
+  Award,
   ChevronDown,
   CircleCheck,
+  Database,
   Eye,
   EyeOff,
-  FileCheck2,
-  Link2,
   LockKeyhole,
   Mail,
+  MessageSquare,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   User,
-  UsersRound,
+  UserCheck,
+  UsersRound
 } from 'lucide-react'
 import { useAuth } from './AuthContext'
 
 type Mode = 'login' | 'register'
 
-const ease = [0.16, 1, 0.3, 1] as const
-const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }
+const fadeUp = { hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
+  }
+}
 
-const features = [
-  { icon: Link2, title: 'Cryptographic chain', copy: 'Every decision is linked and tamper-evident.' },
-  { icon: UsersRound, title: 'Human accountability', copy: 'Review, approve, and flag AI outcomes.' },
-  { icon: FileCheck2, title: 'Compliance evidence', copy: 'Export an audit-ready record when needed.' },
-]
+// Enterprise Timeline - Compact Fit Version
+function LifecycleGraphic() {
+  const [activeStep, setActiveStep] = useState(0)
 
-const stats = [
-  ['AI records', 'Verified'],
-  ['SHA-256', 'Protected'],
-  ['Review', 'Ready'],
-  ['Enterprise', 'Grade'],
-]
-
-function NetworkGraphic() {
-  const nodes = [
-    { cx: '15%', cy: '28%', r: 3, delay: 0 },
-    { cx: '34%', cy: '16%', r: 4, delay: 0.5 },
-    { cx: '51%', cy: '37%', r: 3, delay: 1 },
-    { cx: '72%', cy: '20%', r: 4, delay: 1.5 },
-    { cx: '82%', cy: '52%', r: 3, delay: 0.8 },
-    { cx: '61%', cy: '72%', r: 4, delay: 1.2 },
-    { cx: '29%', cy: '71%', r: 3, delay: 0.3 },
+  const steps = [
+    { id: 'request', title: 'AI Request', desc: 'Employee submits a prompt', icon: MessageSquare },
+    { id: 'response', title: 'AI Response', desc: 'Enterprise AI generates a response', icon: Sparkles },
+    { id: 'policy', title: 'Policy Validation', desc: 'Security and compliance policies are checked', icon: ShieldAlert },
+    { id: 'crypto', title: 'Cryptographic Verification', desc: 'SHA-256 hash is generated and verified', icon: LockKeyhole },
+    { id: 'audit', title: 'Immutable Audit Record', desc: 'Decision is permanently recorded', icon: Database },
+    { id: 'review', title: 'Human Approval', desc: 'Reviewer approves or flags the decision', icon: UserCheck },
+    { id: 'cert', title: 'Compliance Certificate', desc: 'Evidence is available for audit and export', icon: Award },
   ]
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % steps.length)
+    }, 600)
+    return () => clearInterval(timer)
+  }, [steps.length])
+
   return (
-    <div className="network-graphic" aria-hidden="true">
-      <svg viewBox="0 0 600 400" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="network-line" x1="0" x2="1">
-            <stop offset="0" stopColor="#6d88bd" stopOpacity=".08" />
-            <stop offset=".5" stopColor="#9bb8f5" stopOpacity=".68" />
-            <stop offset="1" stopColor="#c3a15d" stopOpacity=".12" />
-          </linearGradient>
-          <radialGradient id="network-glow"><stop stopColor="#85a6e8" stopOpacity=".2" /><stop offset="1" stopColor="#85a6e8" stopOpacity="0" /></radialGradient>
-        </defs>
-        <circle cx="320" cy="175" r="150" fill="url(#network-glow)" />
-        <g stroke="url(#network-line)" strokeWidth="1">
-          <path d="M90 112 204 64 306 148 432 80 492 208 366 288 174 284 90 112Z" />
-          <path d="M204 64 366 288M306 148 174 284M432 80 306 148M492 208 306 148" />
-        </g>
-        {nodes.map((node) => (
-          <motion.circle key={node.cx} cx={node.cx} cy={node.cy} r={node.r} fill="#b9cdf5" initial={{ opacity: 0.35 }} animate={{ opacity: [0.35, 1, 0.35], scale: [1, 1.5, 1] }} transition={{ duration: 3.4, delay: node.delay, repeat: Infinity, ease: 'easeInOut' }} />
-        ))}
-      </svg>
-      <div className="network-core"><Shield size={20} strokeWidth={1.5} /><span>VERIFIED</span></div>
+    <div className="relative flex flex-col gap-3 w-full max-w-md">
+      {/* Background track line */}
+      <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-800 rounded-full" aria-hidden="true" />
+
+      {/* Animated active progress line */}
+      <div className="absolute left-[19px] top-4 bottom-4 w-0.5 rounded-full" aria-hidden="true">
+        <motion.div
+          className="w-full bg-gradient-to-b from-blue-500 to-emerald-400 rounded-full"
+          animate={{ height: `${(activeStep / (steps.length - 1)) * 100}%` }}
+          transition={{ ease: 'easeOut', duration: 0.45 }}
+        />
+      </div>
+
+      {steps.map((step, i) => {
+        const isActive = i === activeStep
+        const isPast = i <= activeStep
+        const Icon = step.icon
+
+        return (
+          <div key={step.id} className="relative flex items-center gap-4 z-10">
+            {/* Circular Icon (Scaled down to 40px) */}
+            <motion.div
+              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 bg-slate-950 shrink-0 ${
+                isActive
+                  ? 'border-emerald-400 text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.3)]'
+                  : isPast
+                  ? 'border-blue-500 text-blue-500'
+                  : 'border-slate-700 text-slate-500'
+              }`}
+              animate={{ scale: isActive ? 1.05 : 1 }}
+              transition={{ ease: [0.22, 0.61, 0.36, 1], duration: 0.3 }}
+            >
+              <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+            </motion.div>
+
+            {/* Text Content */}
+            <div className={`flex flex-col transition-opacity duration-300 ${isPast ? 'opacity-100' : 'opacity-40'}`}>
+              <h3 className={`text-[14px] font-semibold tracking-wide flex items-center gap-2 ${
+                isActive ? 'text-emerald-400' : isPast ? 'text-slate-100' : 'text-slate-400'
+              }`}>
+                <span className={`text-[9px] font-bold border rounded-full w-3.5 h-3.5 inline-flex items-center justify-center shrink-0 ${
+                  isActive ? 'border-emerald-400/50' : isPast ? 'border-blue-500/50' : 'border-slate-600'
+                }`}>
+                  {i + 1}
+                </span>
+                {step.title}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-snug mt-0.5">
+                {step.desc}
+              </p>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 function FloatingLabelField({ id, label, icon: Icon, children }: { id: string; label: string; icon: typeof Mail; children: React.ReactNode }) {
   return (
-    <div className="field-shell">
-      <Icon className="field-icon" size={17} strokeWidth={1.7} aria-hidden="true" />
+    <div className="field-shell group relative">
+      <Icon className="field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500" size={18} strokeWidth={1.8} aria-hidden="true" />
       {children}
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className="absolute left-11 transition-all text-slate-400 text-sm">{label}</label>
     </div>
   )
 }
@@ -107,7 +146,6 @@ export function LoginPage() {
     setIsLoading(true)
     setError('')
     setSuccess('')
-
     try {
       if (mode === 'register') {
         const res = await fetch('http://localhost:8000/api/auth/register', {
@@ -116,29 +154,18 @@ export function LoginPage() {
           body: JSON.stringify({ username: email.trim().toLowerCase(), password, display_name: displayName, role }),
         })
         const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          const detail = data.detail
-          const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ') : 'Registration failed'
-          throw new Error(message)
-        }
-        setPassword('')
-        setDisplayName('')
-        setMode('login')
-        setSuccess('Registration successful. Please sign in with your email and password.')
+        if (!res.ok) throw new Error(data.detail || 'Registration failed')
+        switchMode('login')
+        setSuccess('Workspace initialized. Please authenticate.')
         return
       }
-
       const res = await fetch('http://localhost:8000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email.trim().toLowerCase(), password }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const detail = data.detail
-        const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ') : 'Login failed'
-        throw new Error(message)
-      }
+      if (!res.ok) throw new Error(data.detail || 'Authentication failed')
       login(data.user, data.token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
@@ -148,50 +175,135 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-page">
+    <main className="auth-page flex flex-col lg:flex-row w-full max-w-[1700px] mx-auto">
       <div className="aurora aurora-one" aria-hidden="true" />
       <div className="aurora aurora-two" aria-hidden="true" />
-      <div className="noise-layer" aria-hidden="true" />
+      <div className="noise-layer pointer-events-none" aria-hidden="true" />
+      <div className="spotlight" aria-hidden="true" />
 
-      <section className="auth-hero" aria-labelledby="hero-title">
-        <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
-        <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
-        <NetworkGraphic />
-        <motion.div className="hero-content" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.07 } } }}>
-          <motion.div variants={fadeUp} transition={{ duration: 0.45, ease }} className="hero-brand"><span className="brand-symbol"><Shield size={19} /></span><span>AI Audit Trail</span></motion.div>
-          <motion.div variants={fadeUp} transition={{ duration: 0.45, ease }} className="hero-eyebrow"><Sparkles size={14} /> ENTERPRISE AI GOVERNANCE</motion.div>
-          <motion.h1 id="hero-title" variants={fadeUp} transition={{ duration: 0.5, ease }}>Make every AI decision<br /><em>accountable.</em></motion.h1>
-          <motion.p variants={fadeUp} transition={{ duration: 0.5, ease }} className="hero-copy">Every AI interaction is securely recorded, cryptographically verified, and ready for compliance review.</motion.p>
+      {/* Hero Section */}
+      <aside className="auth-hero flex-1 relative hidden lg:flex flex-col justify-center p-8 xl:p-12" aria-labelledby="hero-title">
+        <motion.article className="hero-content z-10 w-full max-w-2xl" initial="hidden" animate="visible" variants={containerVariants}>
+          <motion.header variants={fadeUp} transition={{ duration: 0.45, ease: 'easeOut' }} className="mb-6">
+            <div className="hero-brand inline-flex items-center gap-2 mb-4">
+              <span className="brand-symbol p-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400"><Shield size={18} /></span>
+              <span className="font-semibold tracking-widest text-[10px] uppercase text-slate-300">AI AUDIT TRAIL</span>
+            </div>
 
-          <motion.div variants={fadeUp} transition={{ duration: 0.5, ease }} className="trust-card"><div className="trust-card-icon"><BadgeCheck size={20} /></div><div><strong>Integrity by design</strong><span>Verified hash chain · Live protection</span></div><CircleCheck className="trust-check" size={18} /></motion.div>
-          <motion.div className="hero-feature-list" variants={fadeUp} transition={{ duration: 0.5, ease }}>{features.map(({ icon: FeatureIcon, title, copy }) => <div className="hero-feature" key={title}><FeatureIcon size={16} /><span><strong>{title}</strong><small>{copy}</small></span></div>)}</motion.div>
-          <motion.div className="hero-stats" variants={fadeUp} transition={{ duration: 0.5, ease }}>{stats.map(([top, bottom], index) => <div key={top} className="hero-stat"><motion.strong initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 + index * 0.1 }}>{top}</motion.strong><span>{bottom}</span></div>)}</motion.div>
-        </motion.div>
-        <div className="hero-footer"><span><Check size={14} /> Built for accountable AI operations</span><span>SECURE · AUDITABLE · READY</span></div>
-      </section>
+            <h1 id="hero-title" className="hero-title text-white font-bold mb-2">
+              Trust Every <br />AI Decision.
+            </h1>
+            <p className="hero-subtitle text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-emerald-200">
+              From AI Response to Trusted Evidence.
+            </p>
+          </motion.header>
 
-      <main className="auth-stage">
-        <motion.section className="auth-card" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.45, ease }} aria-labelledby="auth-title">
-          <div className="card-heading"><div className="card-shield"><Shield size={20} /></div><div><p className="card-kicker">SECURE WORKSPACE</p><h2 id="auth-title">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2><p>{mode === 'login' ? 'Sign in to access your audit workspace.' : 'Set up secure access to your audit workspace.'}</p></div></div>
+          <motion.div variants={fadeUp}>
+            <LifecycleGraphic />
+          </motion.div>
+        </motion.article>
+      </aside>
 
-          <div className="auth-tabs" role="tablist" aria-label="Authentication mode"><span className={`auth-tab-indicator ${mode === 'register' ? 'register' : ''}`} aria-hidden="true" /><button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => switchMode('login')}>Sign in</button><button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => switchMode('register')}>Register</button></div>
+      {/* Auth Section */}
+      <section className="auth-stage flex-1 flex flex-col items-center justify-center p-4 lg:p-8 w-full z-10">
+        <motion.article
+          className="auth-card w-full max-w-[460px] p-6 md:p-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+        >
+          <header className="text-center mb-6">
+            <div className="inline-flex p-3 bg-blue-500/10 text-blue-400 rounded-2xl mb-4 ring-1 ring-blue-500/20">
+              <ShieldCheck size={28} />
+            </div>
+            <p className="text-[10px] font-bold tracking-widest text-emerald-400 mb-2 uppercase">ENTERPRISE ACCESS</p>
+            <h2 className="text-2xl font-semibold text-white mb-2">
+              {mode === 'login' ? 'Sign in to Workspace' : 'Create Your AI Audit Account'}
+            </h2>
+            <p className="text-sm text-slate-400">
+              {mode === 'login' ? 'Review, verify, and audit AI decisions securely.' : 'Register to manage, review, and audit enterprise AI activity.'}
+            </p>
+          </header>
 
-          <motion.form onSubmit={handleSubmit} className="auth-form" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
-            {mode === 'register' && <>
-              <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><FloatingLabelField id="display-name" label="Display name" icon={User}><input id="display-name" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required placeholder=" " autoComplete="name" /></FloatingLabelField></motion.div>
-              <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }} className="field-group"><label className="select-label" htmlFor="role">Role</label><div className="select-shell"><UsersRound size={17} aria-hidden="true" /><select id="role" value={role} onChange={(e) => setRole(e.target.value)}><option value="analyst">Analyst</option><option value="compliance_officer">Compliance officer</option><option value="reviewer">Reviewer</option></select><ChevronDown size={16} aria-hidden="true" /></div></motion.div>
-            </>}
-            <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><FloatingLabelField id="email" label="Email address" icon={Mail}><input id="email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" placeholder=" " /></FloatingLabelField></motion.div>
-            <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><div className="field-label-row"><span>Password</span>{mode === 'login' && <span className="forgot-text">Forgot password?</span>}</div><div className="field-shell"><LockKeyhole className="field-icon" size={17} strokeWidth={1.7} aria-hidden="true" /><input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder=" " aria-label="Password" /><label htmlFor="password">Password</label><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></motion.div>
+          <nav className="auth-tabs flex relative bg-slate-950/50 p-1 rounded-xl mb-6" role="tablist">
+            <motion.div
+              className="absolute inset-y-1 bg-slate-800 rounded-lg shadow-md border border-slate-700"
+              initial={false}
+              animate={{ x: mode === 'login' ? 0 : '100%', width: 'calc(50% - 4px)' }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+            <button className="flex-1 py-2.5 text-sm font-medium z-10" role="tab" aria-selected={mode === 'login'} onClick={() => switchMode('login')}>Sign In</button>
+            <button className="flex-1 py-2.5 text-sm font-medium z-10" role="tab" aria-selected={mode === 'register'} onClick={() => switchMode('register')}>Register</button>
+          </nav>
 
-            {success && <motion.p className="form-message success-message" role="status" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}><CircleCheck size={16} />{success}</motion.p>}
-            {error && <motion.p className="form-message error-message" role="alert" initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}><Shield size={16} />{error}</motion.p>}
-            <motion.button type="submit" disabled={isLoading} className="auth-submit" whileHover={!isLoading ? { y: -2 } : undefined} whileTap={!isLoading ? { scale: 0.985 } : undefined}>{isLoading ? <><span className="loading-spinner" aria-hidden="true" />{mode === 'login' ? 'Signing in…' : 'Creating account…'}</> : <>{mode === 'login' ? 'Sign in securely' : 'Create account'}<ArrowRight size={17} /></>}</motion.button>
+          <motion.form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <AnimatePresence mode="popLayout">
+              {mode === 'register' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex flex-col gap-4">
+                  <FloatingLabelField id="display-name" label="Display Name" icon={User}>
+                    <input className="w-full bg-transparent border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-base text-white peer" id="display-name" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required placeholder=" " autoComplete="name" />
+                  </FloatingLabelField>
+                  <div className="relative">
+                    <label className="sr-only" htmlFor="role">Role</label>
+                    <div className="relative field-shell rounded-xl">
+                      <UsersRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <select className="w-full bg-transparent border border-slate-700 rounded-xl pl-11 pr-10 py-3 text-base text-white appearance-none" id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+                        <option className="bg-slate-900" value="analyst">Data Analyst</option>
+                        <option className="bg-slate-900" value="compliance_officer">Compliance Officer</option>
+                        <option className="bg-slate-900" value="reviewer">Human Reviewer</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <FloatingLabelField id="email" label="Company Email" icon={Mail}>
+              <input className="w-full bg-transparent border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-base text-white peer" id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" placeholder=" " />
+            </FloatingLabelField>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5 text-xs px-1">
+                <span className="sr-only">Password</span>
+                {mode === 'login' && <button type="button" className="text-blue-400 hover:text-blue-300 font-medium transition-colors duration-200">Forgot Password?</button>}
+              </div>
+              <div className="field-shell group relative">
+                <LockKeyhole className="field-icon absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} strokeWidth={1.8} />
+                <input className="w-full bg-transparent border border-slate-700 rounded-xl pl-11 pr-11 py-3 text-base text-white peer" id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder=" " />
+                <label className="absolute left-11 text-slate-400 transition-all pointer-events-none peer-focus:-top-2.5 peer-focus:text-[11px] peer-focus:bg-slate-900 peer-focus:px-1.5" htmlFor="password">Password</label>
+                <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors duration-200" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {success && (
+                <motion.p className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                  <CircleCheck size={16} />{success}
+                </motion.p>
+              )}
+              {error && (
+                <motion.p className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 p-3 rounded-xl border border-red-500/20" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                  <Shield size={16} />{error}
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            <motion.button
+              type="submit" disabled={isLoading}
+              className="auth-submit w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl text-base font-semibold mt-2 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+              ) : (
+                <>{mode === 'login' ? 'Access Workspace' : 'Create Account'} <ArrowRight size={18} /></>
+              )}
+            </motion.button>
           </motion.form>
-          <div className="card-footer"><LockKeyhole size={13} /> Secure access for authorised users only.</div>
-        </motion.section>
-        <p className="stage-note">AI Audit Trail · Cryptographically verifiable records for modern teams</p>
-      </main>
-    </div>
+        </motion.article>
+      </section>
+    </main>
   )
 }

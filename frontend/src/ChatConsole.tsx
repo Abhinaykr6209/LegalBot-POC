@@ -45,8 +45,6 @@ export function ChatConsole() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [isShort, setIsShort] = useState(true)
 
   useEffect(() => {
     setMessages(loadMessages(userId))
@@ -56,30 +54,10 @@ export function ChatConsole() {
     sessionStorage.setItem(storageKey(userId), JSON.stringify(messages))
   }, [messages, userId])
 
-  const scrollToBottom = () => {
+  // Always scroll to bottom when messages or loading state changes
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    const container = messagesContainerRef.current
-    if (!container) return
-
-    const updateLayout = () => {
-      setIsShort(container.scrollHeight <= container.clientHeight)
-    }
-
-    updateLayout()
-    const observer = new ResizeObserver(updateLayout)
-    observer.observe(container)
-
-    return () => observer.disconnect()
-  }, [messages, isLoading, error])
-
-  useEffect(() => {
-    if (!isShort) {
-      scrollToBottom()
-    }
-  }, [messages, isLoading, isShort])
+  }, [messages, isLoading])
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -145,46 +123,44 @@ export function ChatConsole() {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
-      
-      {/* Conversation Header */}
-      <header className="flex w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-6 py-4 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 shadow-sm">
-            <Sparkles className="h-5 w-5" />
+    // The outermost container maintains a strict height, preventing the page from scrolling
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
+
+      {/* 1. Header (Fixed at top) */}
+      <header className="flex w-full shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 shadow-sm">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
-            <h2 className="font-semibold text-slate-900">Secure Audit Console</h2>
-            <div className="mt-0.5 flex items-center gap-2 text-xs font-medium text-slate-500">
-              <Lock className="h-3 w-3" />
-              <span>End-to-end encrypted</span>
-              <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+            <h2 className="font-semibold text-slate-900 text-sm">Secure Audit Console</h2>
+            <div className="mt-0.5 flex items-center gap-2 text-[10px] sm:text-xs font-medium text-slate-500">
+              <Lock className="h-3 w-3 hidden sm:block" />
+              <span className="hidden sm:inline">End-to-end encrypted</span>
+              <span className="h-1 w-1 rounded-full bg-slate-300 hidden sm:block"></span>
               <span>Model: General_Assistant_v1</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 rounded-full border border-[#C8A96A]/30 bg-[#C8A96A]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#9E7A3B]">
-            <ShieldCheck className="h-3.5 w-3.5" /> 
-            Audit Logging Active
+          <span className="flex items-center gap-1.5 rounded-full border border-[#C8A96A]/30 bg-[#fdfaf3] px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-[#9E7A3B]">
+            <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <span className="hidden sm:inline">Audit Logging Active</span>
+            <span className="sm:hidden">Active</span>
           </span>
         </div>
       </header>
 
-      {/* Chat Messages Area */}
-      <div
-        ref={messagesContainerRef}
-        className="min-h-0 w-full flex-1 overflow-y-auto bg-slate-50/50 p-6"
-      >
-        <div className={`mx-auto flex min-h-full w-full max-w-4xl flex-col space-y-6 ${isShort ? 'justify-center' : ''}`}>
-          
-          {/* Enterprise Empty State */}
+      {/* 2. Scrollable Messages Area (Takes up remaining space) */}
+      <div className="min-h-0 w-full flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-col space-y-5">
+
           {messages.length === 0 && !error && !isLoading && (
-            <motion.div 
-              initial={{ opacity: 0, y: 15 }} 
-              animate={{ opacity: 1, y: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex w-full flex-col items-center justify-center text-center"
+              className="flex w-full flex-col items-center justify-center text-center py-20"
             >
               <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <ShieldCheck className="h-8 w-8 text-blue-600" />
@@ -196,7 +172,6 @@ export function ChatConsole() {
             </motion.div>
           )}
 
-          {/* Messages */}
           <AnimatePresence initial={false}>
             {messages.map((message) => {
               const messageTime = formatMessageTime(message.id)
@@ -209,70 +184,58 @@ export function ChatConsole() {
                   className={`flex w-full flex-col ${message.type === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   {message.type === 'user' ? (
-                    // User Message Bubble
-                    <div className="group relative max-w-2xl rounded-2xl rounded-tr-sm bg-gradient-to-br from-blue-600 to-blue-700 px-5 py-3.5 text-white shadow-md shadow-blue-900/10 transition-shadow hover:shadow-lg">
-                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed tracking-wide">
+                    // Compact, rounded user bubble
+                    <div className="relative w-fit max-w-[85%] md:max-w-[70%] rounded-2xl rounded-tr-sm bg-blue-600 px-4 py-2.5 text-white shadow-sm">
+                      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
                         {message.text}
                       </p>
                       {messageTime && (
-                        <span className="mt-1.5 block text-right text-[10px] font-medium text-blue-100 opacity-80">
+                        <span className="mt-1 block text-right text-[10px] font-medium text-blue-100 opacity-80">
                           {messageTime}
                         </span>
                       )}
                     </div>
                   ) : (
-                    // Enterprise AI Response Card
-                    <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl rounded-tl-sm border border-slate-200/80 bg-white/70 shadow-sm backdrop-blur-xl transition-all hover:shadow-md">
-                      
-                      {/* AI Card Header */}
-                      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-2.5">
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1.5 font-semibold text-slate-700">
-                            <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                            AI Assistant
-                          </span>
-                          <span className="h-3 w-px bg-slate-300"></span>
-                          <span className="flex items-center gap-1 font-semibold text-emerald-600">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Verified
-                          </span>
-                          <span className="flex items-center gap-1 rounded bg-slate-200/50 px-1.5 py-0.5 font-medium text-slate-600">
-                            <Lock className="h-3 w-3" />
-                            SHA-256 Protected
-                          </span>
-                        </div>
+                    // Compact AI Message Card
+                    <div className="group relative flex w-full max-w-[90%] md:max-w-[70%] flex-col overflow-hidden rounded-2xl rounded-tl-sm border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+
+                      {/* Compact Metadata Strip */}
+                      <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-1.5 text-[11px] text-slate-500">
+                        <Sparkles className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                        <span className="font-semibold text-slate-700">AI Assistant</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="flex items-center gap-1 font-medium text-emerald-600">
+                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          Verified
+                        </span>
+                        <span className="text-slate-300 hidden sm:inline">•</span>
+                        <span className="hidden sm:inline font-mono">
+                          ID: {message.decisionId?.slice(0, 8)}
+                        </span>
+                        {messageTime && (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span>{messageTime}</span>
+                          </>
+                        )}
                       </div>
-                      
-                      {/* AI Card Content */}
-                      <div className="px-5 py-4">
+
+                      {/* Message Content */}
+                      <div className="px-4 py-3">
                         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-slate-800">
                           {message.text}
                         </p>
                       </div>
 
-                      {/* AI Card Audit Footer */}
+                      {/* Hover Export Action */}
                       {message.decisionId && (
-                        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/80 px-5 py-3">
-                          <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500">
-                            <div className="flex items-center gap-1.5">
-                              <span className="uppercase tracking-wider text-slate-400">Decision ID</span>
-                              <span className="font-mono text-slate-700">{message.decisionId}</span>
-                            </div>
-                            <div className="hidden h-3 w-px bg-slate-300 sm:block"></div>
-                            <div className="hidden items-center gap-1.5 sm:flex">
-                              <span className="uppercase tracking-wider text-slate-400">Integrity</span>
-                              <span className="text-emerald-600">Intact</span>
-                            </div>
-                            <div className="hidden h-3 w-px bg-slate-300 sm:block"></div>
-                            <span className="hidden sm:block">{messageTime}</span>
-                          </div>
-                          
+                        <div className="absolute right-2 top-1.5 hidden opacity-0 transition-opacity group-hover:flex group-hover:opacity-100 items-center">
                           <Link
                             to={`/certificate/${message.decisionId}`}
-                            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:border-blue-300 hover:text-blue-600"
+                            className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm border border-slate-200 transition-all hover:border-slate-300 hover:text-slate-900"
                           >
-                            <FileText className="h-3.5 w-3.5" />
-                            Export Certificate
+                            <FileText className="h-3 w-3 shrink-0" />
+                            View Audit
                           </Link>
                         </div>
                       )}
@@ -283,42 +246,35 @@ export function ChatConsole() {
             })}
           </AnimatePresence>
 
-          {/* Premium Loading State */}
           {isLoading && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl rounded-tl-sm border border-slate-200/80 bg-white/70 p-5 shadow-sm backdrop-blur-xl"
+              className="flex w-fit max-w-[70%] items-center gap-3 rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-sm font-semibold text-slate-700">Verifying policies & generating response...</span>
-              </div>
-              <div className="mt-4 space-y-2">
-                <div className="h-2 w-full animate-pulse rounded-full bg-slate-100"></div>
-                <div className="h-2 w-3/4 animate-pulse rounded-full bg-slate-100"></div>
-                <div className="h-2 w-1/2 animate-pulse rounded-full bg-slate-100"></div>
-              </div>
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600 shrink-0" />
+              <span className="text-sm font-medium text-slate-600">Verifying policies & generating response...</span>
             </motion.div>
           )}
 
-          <div ref={messagesEndRef} />
+          {/* Invisible div to scroll to */}
+          <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
 
       {error && (
-        <div className="flex w-full shrink-0 items-center gap-2 border-t border-red-200 bg-red-50 px-6 py-3 text-sm font-medium text-red-600">
-          <ShieldAlert className="h-4 w-4" />
-          {error}
+        <div className="flex w-full shrink-0 items-center gap-2 border-t border-red-200 bg-red-50 px-4 py-2 sm:px-6 sm:py-3 text-xs sm:text-sm font-medium text-red-600">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          <span className="truncate">{error}</span>
         </div>
       )}
 
-      {/* Premium Message Composer */}
-      <div className="w-full shrink-0 border-t border-slate-200 bg-white p-6">
+      {/* 3. Input Area (Permanently Fixed at Bottom) */}
+      <div className="w-full shrink-0 border-t border-slate-200 bg-white p-3 sm:p-4 lg:p-6 z-10">
         <div className="mx-auto max-w-4xl relative">
-          <div className="relative flex w-full items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-2 shadow-inner transition-colors focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10">
-            <button className="mb-1 ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600">
-              <Paperclip className="h-5 w-5" />
+          <div className="relative flex w-full items-end gap-2 sm:gap-3 rounded-xl border border-slate-200 bg-white p-1.5 sm:p-2 shadow-sm transition-colors focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-500/10">
+            <button className="mb-1 ml-1 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+              <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
             <textarea
               value={input}
@@ -326,22 +282,22 @@ export function ChatConsole() {
               onKeyPress={handleKeyPress}
               disabled={isLoading}
               placeholder="Message the secure AI assistant..."
-              className="max-h-48 min-h-[44px] w-full resize-none bg-transparent py-2.5 text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed"
+              className="max-h-32 sm:max-h-48 min-h-[40px] sm:min-h-[44px] w-full resize-none bg-transparent py-2 sm:py-2.5 text-sm sm:text-[15px] leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed"
               rows={input.split('\n').length > 1 ? Math.min(input.split('\n').length, 5) : 1}
             />
             <button
               type="button"
               onClick={handleSendMessage}
               disabled={isLoading || !input.trim()}
-              className="mb-1 mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+              className="mb-1 mr-1 flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition-all hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             >
-              <Send className="h-4 w-4 ml-0.5" />
+              <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-0.5" />
             </button>
           </div>
           <div className="mt-2 flex items-center justify-between px-1">
-            <span className="text-xs text-slate-400">Protected by SHA-256 Integrity Hash</span>
-            <span className="text-xs font-medium text-slate-400">
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans">Shift</kbd> + <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans">Enter</kbd> for new line
+            <span className="text-[10px] sm:text-xs text-slate-400">Protected by SHA-256 Integrity Hash</span>
+            <span className="hidden sm:inline-block text-[10px] sm:text-xs font-medium text-slate-400">
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-slate-500">Shift</kbd> + <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-sans text-slate-500">Enter</kbd> for new line
             </span>
           </div>
         </div>

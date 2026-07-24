@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react'
 import { useAuth } from './AuthContext'
 
 type AuditEntry = {
@@ -59,218 +60,226 @@ export function Certificate() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-paper p-8 text-center text-ink-soft">
-        Loading audit entry…
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#F4F7FB] p-8">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm font-medium">Loading official audit record...</p>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-paper p-8">
-        <div className="mb-4 text-rust">{error}</div>
-        <button
-          onClick={() => navigate('/')}
-          className="rounded bg-ink px-4 py-2 text-paper-raised transition-colors hover:bg-ink-2"
-        >
-          Back to Audit Trail
-        </button>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#F4F7FB] p-8">
+        <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-full bg-red-50 p-3">
+            <ShieldAlert className="h-8 w-8 text-red-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Unable to load certificate</h2>
+            <p className="mt-1 text-sm text-slate-500">{error}</p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+          >
+            Back to Audit Trail
+          </button>
+        </div>
       </div>
     )
   }
 
-  if (!entry) {
-    return (
-      <div className="min-h-screen bg-paper p-8 text-center text-ink-soft">
-        Entry not found
-      </div>
-    )
-  }
+  if (!entry) return null
 
   return (
-    <div className="min-h-screen bg-paper p-6 md:p-8">
-      <div className="certificate-document mx-auto max-w-4xl border-4 border-line-strong p-1">
-        <div className="certificate-inner border border-line-strong bg-paper-raised p-8 md:p-12 lg:p-14">
-          {/* Header */}
-          <div className="mb-10 border-b border-line pb-8">
-            <div className="flex items-start gap-5">
-              <svg
-                aria-hidden="true"
-                className="certificate-seal h-14 w-14 shrink-0 text-brass"
-                viewBox="0 0 48 48"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2" />
-                <circle cx="24" cy="24" r="14" stroke="currentColor" strokeWidth="1" strokeOpacity="0.5" />
-                <path
-                  d="M16 24.5l5 5 11-12"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+    <div className="min-h-[100dvh] bg-[#F4F7FB] p-4 py-8 md:p-8 lg:py-12">
+      <div className="certificate-document mx-auto w-full max-w-4xl bg-white border border-slate-200 shadow-sm p-6 md:p-12">
+
+        {/* Header */}
+        <div className="mb-8 border-b border-slate-100 pb-6">
+          <div className="flex items-start gap-4">
+            {/* Gold Seal Icon */}
+            <svg
+              aria-hidden="true"
+              className="certificate-seal h-12 w-12 shrink-0 text-[#C8A96A]"
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="24" cy="24" r="21" stroke="currentColor" strokeWidth="1.5" />
+              <circle cx="24" cy="24" r="16" stroke="currentColor" strokeWidth="1" strokeOpacity="0.4" />
+              <path
+                d="M17 25l4.5 4.5 10-11"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                Certificate of Record
+              </h1>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Official Record of AI System Activity
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/"
+            className="no-print mt-6 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800 hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Audit Trail
+          </Link>
+        </div>
+
+        {/* Certificate Content */}
+        <div className="space-y-6">
+
+          {/* Entry Identity */}
+          <div className="rounded-xl border border-slate-200 p-5 md:p-6">
+            <h2 className="mb-4 text-sm font-bold text-slate-900">Entry Identity</h2>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <h1 className="font-display text-3xl font-semibold tracking-tight text-ink md:text-4xl">
-                  Certificate of Record
-                </h1>
-                <p className="mt-1 text-ink-soft">Official Record of AI System Activity</p>
+                <p className="text-xs font-semibold text-slate-500">Decision ID</p>
+                <p className="mt-1 break-all font-mono text-sm font-medium text-slate-900">
+                  {entry.decision_id}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Timestamp (UTC)</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {new Date(entry.timestamp_utc).toLocaleString()}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => navigate('/')}
-              className="no-print mt-5 text-sm text-ink-soft underline transition-colors hover:text-ink"
-            >
-              ← Back to Audit Trail
-            </button>
           </div>
 
-          {/* Certificate Content */}
-          <div className="space-y-6">
-            {/* Identity Section */}
-            <div className="rounded-lg border border-line p-6">
-              <h2 className="font-display mb-4 text-lg font-semibold text-ink">Entry Identity</h2>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">Decision ID</p>
-                  <p className="mt-1 break-all font-mono text-base text-ink">
-                    {entry.decision_id}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">Timestamp (UTC)</p>
-                  <p className="mt-1 text-base text-ink">
-                    {new Date(entry.timestamp_utc).toLocaleString()}
-                  </p>
-                </div>
+          {/* User & System Section */}
+          <div className="rounded-xl border border-slate-200 p-5 md:p-6">
+            <h2 className="mb-4 text-sm font-bold text-slate-900">User & System</h2>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold text-slate-500">User ID</p>
+                <p className="mt-1 break-all text-sm font-medium text-slate-900">{entry.user_id}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">User Display Name</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{entry.user_display_name}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">AI System</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{entry.ai_system}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Model Version</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{entry.model_version}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Source Type</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{entry.source_type}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Input Source</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{entry.input_source}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Policy Section */}
+          <div className="rounded-xl border border-slate-200 p-5 md:p-6">
+            <h2 className="mb-4 text-sm font-bold text-slate-900">
+              Policy & Governance
+            </h2>
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Policy Invoked</p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{entry.policy_invoked}</p>
+            </div>
+          </div>
+
+          {/* Content Section */}
+          <div className="space-y-4 rounded-xl border border-slate-200 p-5 md:p-6">
+            <h2 className="text-sm font-bold text-slate-900">Content</h2>
+
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-500">Input Text</p>
+              <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                {entry.input_text || 'N/A'}
               </div>
             </div>
 
-            {/* User & System Section */}
-            <div className="rounded-lg border border-line p-6">
-              <h2 className="font-display mb-4 text-lg font-semibold text-ink">User & System</h2>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">User ID</p>
-                  <p className="mt-1 text-base text-ink">{entry.user_id}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">User Display Name</p>
-                  <p className="mt-1 text-base text-ink">{entry.user_display_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">AI System</p>
-                  <p className="mt-1 text-base text-ink">{entry.ai_system}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">Model Version</p>
-                  <p className="mt-1 text-base text-ink">{entry.model_version}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">Source Type</p>
-                  <p className="mt-1 text-base text-ink">{entry.source_type}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-ink-soft">Input Source</p>
-                  <p className="mt-1 text-base text-ink">{entry.input_source}</p>
-                </div>
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-500">Output Text</p>
+              <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                {entry.output_text || 'N/A'}
               </div>
             </div>
 
-            {/* Policy Section */}
-            <div className="rounded-lg border border-line p-6">
-              <h2 className="font-display mb-4 text-lg font-semibold text-ink">
-                Policy & Governance
-              </h2>
-              <div>
-                <p className="text-sm font-medium text-ink-soft">Policy Invoked</p>
-                <p className="mt-1 text-base text-ink">{entry.policy_invoked}</p>
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-500">Reasoning Summary</p>
+              <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                {entry.reasoning_summary || 'N/A'}
               </div>
             </div>
 
-            {/* Content Section */}
-            <div className="space-y-4 rounded-lg border border-line p-6">
-              <h2 className="font-display text-lg font-semibold text-ink">Content</h2>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Input Text</p>
-                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
-                  {entry.input_text}
-                </p>
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-500">Downstream Action</p>
+              <div className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                {entry.downstream_action}
               </div>
+            </div>
+          </div>
 
-              <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Output Text</p>
-                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
-                  {entry.output_text}
-                </p>
-              </div>
+          {/* Integrity Section (Gold Theme) */}
+          <div className="space-y-4 rounded-xl border border-[#e8d5aa] border-l-4 border-l-[#C8A96A] bg-[#fdfaf3] p-5 md:p-6">
+            <h2 className="text-sm font-bold text-slate-900">
+              Integrity Verification
+            </h2>
 
-              <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Reasoning Summary</p>
-                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
-                  {entry.reasoning_summary}
-                </p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Downstream Action</p>
-                <p className="whitespace-pre-wrap rounded border border-line bg-paper p-4 text-base text-ink">
-                  {entry.downstream_action}
-                </p>
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-600">Entry Hash (SHA-256)</p>
+              <div className="break-all rounded-lg border border-[#e8d5aa] bg-white p-3 font-mono text-xs text-slate-600">
+                {entry.entry_hash}
               </div>
             </div>
 
-            {/* Integrity Section */}
-            <div className="space-y-4 rounded-lg border border-line border-l-4 border-l-brass bg-brass-tint/40 p-6">
-              <h2 className="font-display text-lg font-semibold text-ink">
-                Integrity Verification
-              </h2>
-
-              <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Entry Hash (SHA-256)</p>
-                <p className="break-all rounded border border-line bg-paper-raised p-3 font-mono text-xs text-ink">
-                  {entry.entry_hash}
-                </p>
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-slate-600">Previous Hash (SHA-256)</p>
+              <div className="break-all rounded-lg border border-[#e8d5aa] bg-white p-3 font-mono text-xs text-slate-600">
+                {entry.prev_hash}
               </div>
+            </div>
 
+            {entry.parent_decision_id && (
               <div>
-                <p className="mb-2 text-sm font-medium text-ink-soft">Previous Hash (SHA-256)</p>
-                <p className="break-all rounded border border-line bg-paper-raised p-3 font-mono text-xs text-ink">
-                  {entry.prev_hash}
-                </p>
-              </div>
-
-              {entry.parent_decision_id && (
-                <div>
-                  <p className="mb-2 text-sm font-medium text-ink-soft">Parent Decision ID</p>
-                  <p className="break-all font-mono text-xs text-ink">
-                    {entry.parent_decision_id}
-                  </p>
+                <p className="mb-1.5 text-xs font-semibold text-slate-600">Parent Decision ID</p>
+                <div className="break-all font-mono text-xs text-slate-700">
+                  {entry.parent_decision_id}
                 </div>
-              )}
+              </div>
+            )}
 
-              <p className="pt-2 text-xs text-ink-soft">
-                This entry is part of an immutable hash chain. Each entry&apos;s hash incorporates the
-                previous entry&apos;s hash, creating a tamper-evident audit trail.
-              </p>
-            </div>
+            <p className="pt-1 text-xs text-slate-500 font-medium">
+              This entry is part of an immutable hash chain. Each entry's hash incorporates the
+              previous entry's hash, creating a tamper-evident audit trail.
+            </p>
+          </div>
 
-            {/* Footer */}
-            <div className="mt-10 border-t border-line pt-6 text-center text-sm text-ink-soft">
-              <p>Generated: {new Date().toLocaleString()} UTC</p>
-              <p className="mt-2 text-xs">
-                This certificate is generated from immutable audit records. Suitable for sharing with
-                outside counsel and regulatory bodies.
-              </p>
-              <button
-                onClick={() => window.print()}
-                className="no-print mt-4 rounded bg-ink px-4 py-2 text-sm font-medium text-paper-raised transition-colors hover:bg-ink-2"
-              >
-                Print / Export as PDF
-              </button>
-            </div>
+          {/* Footer */}
+          <div className="mt-8 border-t border-slate-200 pt-8 text-center text-slate-500">
+            <p className="text-xs font-medium">Generated: {new Date().toLocaleString()} UTC</p>
+            <p className="mt-1.5 text-[10px] sm:text-xs">
+              This certificate is generated from immutable audit records. Suitable for sharing with
+              outside counsel and regulatory bodies.
+            </p>
+            <button
+              onClick={() => window.print()}
+              className="no-print mx-auto mt-6 block rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+            >
+              Print / Export as PDF
+            </button>
           </div>
         </div>
       </div>
@@ -279,25 +288,24 @@ export function Certificate() {
       <style>{`
         @media print {
           body {
-            background: white;
-          }
-          .certificate-document,
-          .certificate-inner,
-          .certificate-seal {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+            background: white !important;
           }
           .certificate-document {
-            border-color: #c3cad9;
-            padding: 0;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
           }
-          .certificate-inner {
-            border-color: #c3cad9;
-            padding: 2rem;
-          }
-          button,
           .no-print {
-            display: none;
+            display: none !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          /* Ensure breaks don't happen inside cards */
+          .rounded-xl {
+            break-inside: avoid;
           }
         }
       `}</style>
