@@ -107,3 +107,44 @@ def test_audit_log_chain_corruption_detection(test_db):
     result = verify_chain(db=test_db)
     assert result["valid"] is False
     assert result["broken_at_decision_id"] == entry1.decision_id
+
+
+def test_cost_aggregation(test_db):
+    entry1 = create_audit_log_entry(
+        source_type="chat_console",
+        user_id="user123", user_display_name="Alice",
+        ai_system="openai", model_version="gpt-4o-mini",
+        input_text="Hello", input_source="console",
+        policy_invoked="general", reasoning_summary="Test",
+        output_text="Hi there", downstream_action="log",
+        prompt_tokens=100, completion_tokens=50,
+        db=test_db,
+    )
+    entry2 = create_audit_log_entry(
+        source_type="chat_console",
+        user_id="user456", user_display_name="Bob",
+        ai_system="openai", model_version="gpt-4o",
+        input_text="What is AI?", input_source="console",
+        policy_invoked="general", reasoning_summary="Test",
+        output_text="AI is...", downstream_action="log",
+        prompt_tokens=200, completion_tokens=100,
+        db=test_db,
+    )
+
+    from main import MODEL_PRICING
+    entries = test_db.query(AuditLogEntry).filter(
+        AuditLogEntry.prompt_tokens.isnot(None)
+    ).all()
+
+    assert len(entries) == 2
+
+    pricing_mini = MODEL_PRICING["gpt-4o-mini"]
+    cost_mini = (100 / 1_000_000 * pricing_mini["input"] +
+                 50 / 1_000_000 * pricing_mini["output"])
+
+    pricing_4o = MODEL_PRICING["gpt-4o"]
+    cost_4o = (200 / 1_000_000 * pricing_4o["input"] +
+               100 / 1_000_000 * pricing_4o["output"])
+
+    assert cost_mini > 0
+    assert cost_4o > cost_mini

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from collections import defaultdict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Header
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import io
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 
 from models import init_db, get_db, AuditLogEntry
@@ -188,6 +190,60 @@ def verify_audit_chain(
 ):
     result = verify_chain(db=db)
     return result
+
+
+MODEL_PRICING = {
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-4": {"input": 30.00, "output": 60.00},
+    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+}
+
+
+@app.get("/api/audit-logs/cost")
+def get_audit_cost(
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+    query = db.query(AuditLogEntry).filter(
+        AuditLogEntry.prompt_tokens.isnot(None),
+        AuditLogEntry.completion_tokens.isnot(None),
+        AuditLogEntry.source_type != "review_event",
+    )
+    if from_date:
+        query = query.filter(AuditLogEntry.timestamp_utc >= from_date)
+    if to_date:
+        query = query.filter(AuditLogEntry.timestamp_utc <= to_date)
+
+    entries = query.all()
+
+    model_totals: dict[str, dict] = {}
+    total_cost = 0.0
+    total_prompt = 0
+    total_completion = 0
+
+    for e in entries:
+        pricing = MODEL_PRICING.get(e.model_version, {"input": 0.50, "output": 1.50})
+        cost = (e.prompt_tokens / 1_000_000 * pricing["input"] +
+                e.completion_tokens / 1_000_000 * pricing["output"])
+        total_cost += cost
+        total_prompt += e.prompt_tokens or 0
+        total_completion += e.completion_tokens or 0
+
+        if e.model_version not in model_totals:
+            model_totals[e.model_version] = {"model": e.model_version, "cost": 0.0, "prompt_tokens": 0, "completion_tokens": 0}
+        model_totals[e.model_version]["cost"] += cost
+        model_totals[e.model_version]["prompt_tokens"] += e.prompt_tokens or 0
+        model_totals[e.model_version]["completion_tokens"] += e.completion_tokens or 0
+
+    return {
+        "total_cost": round(total_cost, 4),
+        "total_prompt_tokens": total_prompt,
+        "total_completion_tokens": total_completion,
+        "by_model": [v for v in sorted(model_totals.values(), key=lambda x: x["cost"], reverse=True)],
+    }
 
 
 @app.get("/api/audit-logs/export")

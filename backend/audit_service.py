@@ -18,6 +18,8 @@ def create_audit_log_entry(
     output_text: str,
     downstream_action: str,
     parent_decision_id: str = None,
+    prompt_tokens: int = None,
+    completion_tokens: int = None,
     db: Session = None,
 ) -> AuditLogEntry:
     if db is None:
@@ -67,6 +69,8 @@ def create_audit_log_entry(
             output_text=output_text,
             downstream_action=downstream_action,
             parent_decision_id=parent_decision_id,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
             prev_hash=prev_hash,
             entry_hash=entry_hash,
         )

@@ -26,9 +26,13 @@ def call_chat_api(message: str, model_name: str) -> dict:
         ],
     )
 
+    usage = response.usage or type('Usage', (), {'prompt_tokens': 0, 'completion_tokens': 0})()
+
     return {
         "content": response.choices[0].message.content,
         "model": response.model,
+        "prompt_tokens": usage.prompt_tokens,
+        "completion_tokens": usage.completion_tokens,
     }
 
 
@@ -69,6 +73,8 @@ def process_chat_message(
         reasoning_summary=parsed_response["rationale"],
         output_text=parsed_response["reply"],
         downstream_action="Response displayed to user in chat UI",
+        prompt_tokens=api_response.get("prompt_tokens"),
+        completion_tokens=api_response.get("completion_tokens"),
         db=db,
     )
 

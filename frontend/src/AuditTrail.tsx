@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+} from 'recharts'
 
 type AuditEntry = {
   id: number
@@ -236,8 +248,65 @@ export function AuditTrail() {
   const isBrokenChainEntry = (decisionId: string) =>
     verifyResult?.valid === false && verifyResult.broken_at_decision_id === decisionId
 
+  const [showCharts, setShowCharts] = useState(true)
+  const [costData, setCostData] = useState<{ by_model: { model: string; cost: number }[]; total_cost: number } | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    const params = new URLSearchParams()
+    if (fromDate) params.append('from_date', fromDate)
+    if (toDate) params.append('to_date', toDate)
+    fetch(`http://localhost:8000/api/audit-logs/cost?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setCostData(d))
+      .catch(() => {})
+  }, [token, fromDate, toDate])
+
+  const chartData = useMemo(() => {
+    const decisions = filteredEntries.filter(e => e.source_type !== 'review_event')
+
+    const sourceMap: Record<string, number> = {}
+    const userMap: Record<string, { name: string; count: number }> = {}
+    let reviewed = 0
+    let flagged = 0
+
+    for (const e of decisions) {
+      sourceMap[e.source_type] = (sourceMap[e.source_type] || 0) + 1
+      if (!userMap[e.user_id]) userMap[e.user_id] = { name: e.user_display_name, count: 0 }
+      userMap[e.user_id].count++
+    }
+
+    for (const e of decisions) {
+      const entryReviews = reviews[e.decision_id] || []
+      if (entryReviews.some(r => r.downstream_action.includes('flagged'))) {
+        flagged++
+      } else if (entryReviews.length > 0) {
+        reviewed++
+      }
+    }
+
+    const pending = decisions.length - reviewed - flagged
+
+    return {
+      sources: Object.entries(sourceMap).map(([name, value]) => ({ name, value })),
+      users: Object.values(userMap)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      reviewStatus: [
+        { name: 'Reviewed', value: reviewed },
+        { name: 'Pending', value: pending },
+        { name: 'Flagged', value: flagged },
+      ].filter(d => d.value > 0),
+    }
+  }, [filteredEntries, reviews])
+
+  const CHART_COLORS = ['#101b33', '#a9803b', '#1e7a54', '#b23b2e', '#4a5a7d', '#c3cad9']
+  const PIE_COLORS = ['#101b33', '#a9803b', '#4a5a7d', '#b23b2e', '#c3cad9']
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-4">
+    <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto">
       {/* Controls toolbar */}
       <div className="shrink-0 space-y-4 rounded-lg border border-line bg-paper p-4">
         <div className="flex flex-wrap items-start gap-2">
@@ -368,6 +437,121 @@ export function AuditTrail() {
         </div>
       </div>
 
+      {/* Charts section */}
+      <div className="shrink-0 rounded-lg border border-line bg-paper p-4">
+        <button
+          onClick={() => setShowCharts(!showCharts)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <div>
+            <h3 className="text-sm font-semibold text-ink">Charts & Insights</h3>
+            <p className="text-xs text-ink-soft">Activity, sources, review status & top users</p>
+          </div>
+          <svg
+            className={`h-4 w-4 text-ink-soft transition-transform ${showCharts ? 'rotate-180' : ''}`}
+            viewBox="0 0 16 16" fill="none"
+          >
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {showCharts && (
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Source type mix */}
+            <div className="rounded-lg border border-line bg-paper-raised p-3">
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft">Source type mix</h4>
+              {chartData.sources.length > 0 ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={chartData.sources} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {chartData.sources.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-48 items-center justify-center text-sm text-ink-soft">No data</div>
+              )}
+            </div>
+
+            {/* Review status */}
+            <div className="rounded-lg border border-line bg-paper-raised p-3">
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft">Review status</h4>
+              {chartData.reviewStatus.length > 0 ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData.reviewStatus} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
+                      <Tooltip />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {chartData.reviewStatus.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-48 items-center justify-center text-sm text-ink-soft">No data</div>
+              )}
+            </div>
+
+            {/* Top users */}
+            <div className="rounded-lg border border-line bg-paper-raised p-3">
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft">Top users</h4>
+              {chartData.users.length > 0 ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData.users} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#a9803b" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-48 items-center justify-center text-sm text-ink-soft">No data</div>
+              )}
+            </div>
+
+            {/* API Cost */}
+            <div className="rounded-lg border border-line bg-paper-raised p-3">
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft">API Cost (estimated USD)</h4>
+              {costData && costData.by_model.length > 0 ? (
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={costData.by_model} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="model" tick={{ fontSize: 11 }} width={120} />
+                      <Tooltip formatter={(v: number) => `$${v.toFixed(4)}`} />
+                      <Bar dataKey="cost" fill="#a9803b" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex h-48 items-center justify-center text-sm text-ink-soft">
+                  {costData === null ? 'Loading…' : 'No cost data available'}
+                </div>
+              )}
+              {costData && (
+                <p className="mt-2 text-right text-xs text-ink-soft">
+                  Total: <span className="font-semibold text-ink">${costData.total_cost.toFixed(4)}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {error && (
         <div className="shrink-0 rounded border border-rust/20 bg-rust-tint px-4 py-2 text-sm text-rust">
           {error}
@@ -375,7 +559,7 @@ export function AuditTrail() {
       )}
 
       {/* Ledger entries */}
-      <div className="min-h-0 flex-1 overflow-y-auto pl-1">
+      <div className="pl-1">
         {isLoading ? (
           <p className="px-2 py-4 text-sm text-ink-soft">Loading entries…</p>
         ) : filteredEntries.length === 0 ? (
