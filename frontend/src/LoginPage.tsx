@@ -1,7 +1,87 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import {
+  ArrowRight,
+  BadgeCheck,
+  Check,
+  ChevronDown,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  FileCheck2,
+  Link2,
+  LockKeyhole,
+  Mail,
+  Shield,
+  Sparkles,
+  User,
+  UsersRound,
+} from 'lucide-react'
 import { useAuth } from './AuthContext'
 
 type Mode = 'login' | 'register'
+
+const ease = [0.16, 1, 0.3, 1] as const
+const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }
+
+const features = [
+  { icon: Link2, title: 'Cryptographic chain', copy: 'Every decision is linked and tamper-evident.' },
+  { icon: UsersRound, title: 'Human accountability', copy: 'Review, approve, and flag AI outcomes.' },
+  { icon: FileCheck2, title: 'Compliance evidence', copy: 'Export an audit-ready record when needed.' },
+]
+
+const stats = [
+  ['AI records', 'Verified'],
+  ['SHA-256', 'Protected'],
+  ['Review', 'Ready'],
+  ['Enterprise', 'Grade'],
+]
+
+function NetworkGraphic() {
+  const nodes = [
+    { cx: '15%', cy: '28%', r: 3, delay: 0 },
+    { cx: '34%', cy: '16%', r: 4, delay: 0.5 },
+    { cx: '51%', cy: '37%', r: 3, delay: 1 },
+    { cx: '72%', cy: '20%', r: 4, delay: 1.5 },
+    { cx: '82%', cy: '52%', r: 3, delay: 0.8 },
+    { cx: '61%', cy: '72%', r: 4, delay: 1.2 },
+    { cx: '29%', cy: '71%', r: 3, delay: 0.3 },
+  ]
+
+  return (
+    <div className="network-graphic" aria-hidden="true">
+      <svg viewBox="0 0 600 400" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="network-line" x1="0" x2="1">
+            <stop offset="0" stopColor="#6d88bd" stopOpacity=".08" />
+            <stop offset=".5" stopColor="#9bb8f5" stopOpacity=".68" />
+            <stop offset="1" stopColor="#c3a15d" stopOpacity=".12" />
+          </linearGradient>
+          <radialGradient id="network-glow"><stop stopColor="#85a6e8" stopOpacity=".2" /><stop offset="1" stopColor="#85a6e8" stopOpacity="0" /></radialGradient>
+        </defs>
+        <circle cx="320" cy="175" r="150" fill="url(#network-glow)" />
+        <g stroke="url(#network-line)" strokeWidth="1">
+          <path d="M90 112 204 64 306 148 432 80 492 208 366 288 174 284 90 112Z" />
+          <path d="M204 64 366 288M306 148 174 284M432 80 306 148M492 208 306 148" />
+        </g>
+        {nodes.map((node) => (
+          <motion.circle key={node.cx} cx={node.cx} cy={node.cy} r={node.r} fill="#b9cdf5" initial={{ opacity: 0.35 }} animate={{ opacity: [0.35, 1, 0.35], scale: [1, 1.5, 1] }} transition={{ duration: 3.4, delay: node.delay, repeat: Infinity, ease: 'easeInOut' }} />
+        ))}
+      </svg>
+      <div className="network-core"><Shield size={20} strokeWidth={1.5} /><span>VERIFIED</span></div>
+    </div>
+  )
+}
+
+function FloatingLabelField({ id, label, icon: Icon, children }: { id: string; label: string; icon: typeof Mail; children: React.ReactNode }) {
+  return (
+    <div className="field-shell">
+      <Icon className="field-icon" size={17} strokeWidth={1.7} aria-hidden="true" />
+      {children}
+      <label htmlFor={id}>{label}</label>
+    </div>
+  )
+}
 
 export function LoginPage() {
   const [mode, setMode] = useState<Mode>('login')
@@ -12,14 +92,14 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const { login } = useAuth()
 
   const switchMode = (next: Mode) => {
     setMode(next)
     setError('')
-    if (next === 'register') {
-      setSuccess('')
-    }
+    setShowPassword(false)
+    if (next === 'register') setSuccess('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,27 +113,14 @@ export function LoginPage() {
         const res = await fetch('http://localhost:8000/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: email.trim().toLowerCase(),
-            password,
-            display_name: displayName,
-            role,
-          }),
+          body: JSON.stringify({ username: email.trim().toLowerCase(), password, display_name: displayName, role }),
         })
-
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
           const detail = data.detail
-          const message =
-            typeof detail === 'string'
-              ? detail
-              : Array.isArray(detail)
-                ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ')
-                : 'Registration failed'
+          const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ') : 'Registration failed'
           throw new Error(message)
         }
-
-        // Do not auto-login — send user to Sign in
         setPassword('')
         setDisplayName('')
         setMode('login')
@@ -64,24 +131,14 @@ export function LoginPage() {
       const res = await fetch('http://localhost:8000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: email.trim().toLowerCase(),
-          password,
-        }),
+        body: JSON.stringify({ username: email.trim().toLowerCase(), password }),
       })
-
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         const detail = data.detail
-        const message =
-          typeof detail === 'string'
-            ? detail
-            : Array.isArray(detail)
-              ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ')
-              : 'Login failed'
+        const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ') : 'Login failed'
         throw new Error(message)
       }
-
       login(data.user, data.token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
@@ -91,208 +148,49 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <aside
-        className="relative hidden min-h-screen lg:flex lg:w-[45%] flex-col items-center justify-center bg-ink px-12 xl:px-16 bg-[repeating-linear-gradient(to_bottom,transparent,transparent_27px,rgba(255,255,255,0.05)_27px,rgba(255,255,255,0.05)_28px)]"
-        aria-hidden="true"
-      >
-        <div className="relative w-full max-w-md">
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-paper-raised xl:text-5xl">
-            AI Audit Trail
-          </h1>
-          <p className="mt-5 text-base leading-relaxed text-paper-raised/75">
-            A tamper-evident record of every AI decision your team makes.
-          </p>
-          <ul className="mt-8 space-y-3">
-            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-paper-raised/70">
-              <svg
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brass"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M3.5 8.5l2.5 2.5 6.5-6.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Every AI reply is cryptographically hashed
-            </li>
-            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-paper-raised/70">
-              <svg
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brass"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M3.5 8.5l2.5 2.5 6.5-6.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Reviewers approve or flag entries
-            </li>
-            <li className="flex items-start gap-2.5 text-sm leading-relaxed text-paper-raised/70">
-              <svg
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 text-brass"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M3.5 8.5l2.5 2.5 6.5-6.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Export a signed certificate for any record
-            </li>
-          </ul>
-        </div>
-      </aside>
+    <div className="auth-page">
+      <div className="aurora aurora-one" aria-hidden="true" />
+      <div className="aurora aurora-two" aria-hidden="true" />
+      <div className="noise-layer" aria-hidden="true" />
 
-      <main className="flex min-h-screen w-full flex-1 items-center justify-center bg-paper-raised px-6 py-10 lg:px-12">
-        <div className="w-full max-w-md">
-          <p className="text-sm text-ink-soft">
-            {mode === 'login' ? 'Sign in with your email' : 'Create a new account'}
-          </p>
+      <section className="auth-hero" aria-labelledby="hero-title">
+        <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
+        <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
+        <NetworkGraphic />
+        <motion.div className="hero-content" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.07 } } }}>
+          <motion.div variants={fadeUp} transition={{ duration: 0.45, ease }} className="hero-brand"><span className="brand-symbol"><Shield size={19} /></span><span>AI Audit Trail</span></motion.div>
+          <motion.div variants={fadeUp} transition={{ duration: 0.45, ease }} className="hero-eyebrow"><Sparkles size={14} /> ENTERPRISE AI GOVERNANCE</motion.div>
+          <motion.h1 id="hero-title" variants={fadeUp} transition={{ duration: 0.5, ease }}>Make every AI decision<br /><em>accountable.</em></motion.h1>
+          <motion.p variants={fadeUp} transition={{ duration: 0.5, ease }} className="hero-copy">Every AI interaction is securely recorded, cryptographically verified, and ready for compliance review.</motion.p>
 
-          <div className="mt-6 flex gap-2 border-b border-line">
-            <button
-              type="button"
-              onClick={() => switchMode('login')}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                mode === 'login'
-                  ? 'border-brass text-ink'
-                  : 'border-transparent text-ink-soft hover:text-ink'
-              }`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('register')}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                mode === 'register'
-                  ? 'border-brass text-ink'
-                  : 'border-transparent text-ink-soft hover:text-ink'
-              }`}
-            >
-              Register
-            </button>
-          </div>
+          <motion.div variants={fadeUp} transition={{ duration: 0.5, ease }} className="trust-card"><div className="trust-card-icon"><BadgeCheck size={20} /></div><div><strong>Integrity by design</strong><span>Verified hash chain · Live protection</span></div><CircleCheck className="trust-check" size={18} /></motion.div>
+          <motion.div className="hero-feature-list" variants={fadeUp} transition={{ duration: 0.5, ease }}>{features.map(({ icon: FeatureIcon, title, copy }) => <div className="hero-feature" key={title}><FeatureIcon size={16} /><span><strong>{title}</strong><small>{copy}</small></span></div>)}</motion.div>
+          <motion.div className="hero-stats" variants={fadeUp} transition={{ duration: 0.5, ease }}>{stats.map(([top, bottom], index) => <div key={top} className="hero-stat"><motion.strong initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 + index * 0.1 }}>{top}</motion.strong><span>{bottom}</span></div>)}</motion.div>
+        </motion.div>
+        <div className="hero-footer"><span><Check size={14} /> Built for accountable AI operations</span><span>SECURE · AUDITABLE · READY</span></div>
+      </section>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            {mode === 'register' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
-                    Display name
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    required
-                    className="w-full rounded-lg border border-line px-3 py-2 text-ink transition-shadow focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
-                    placeholder="Priya Reviewer"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
-                    Role
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full appearance-none rounded-lg border border-line bg-paper-raised px-3 py-2 pr-10 text-ink transition-shadow focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
-                    >
-                      <option value="analyst">Analyst</option>
-                      <option value="compliance_officer">Compliance officer</option>
-                      <option value="reviewer">Reviewer</option>
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M4 6l4 4 4-4"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </>
-            )}
+      <main className="auth-stage">
+        <motion.section className="auth-card" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.45, ease }} aria-labelledby="auth-title">
+          <div className="card-heading"><div className="card-shield"><Shield size={20} /></div><div><p className="card-kicker">SECURE WORKSPACE</p><h2 id="auth-title">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2><p>{mode === 'login' ? 'Sign in to access your audit workspace.' : 'Set up secure access to your audit workspace.'}</p></div></div>
 
-            <div>
-              <label className="block text-sm font-medium text-ink mb-1">
-                Email
-              </label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="username"
-                className="w-full rounded-lg border border-line px-3 py-2 text-ink transition-shadow focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
-                placeholder={mode === 'login' ? 'you@company.com or priya' : 'you@company.com'}
-              />
-            </div>
+          <div className="auth-tabs" role="tablist" aria-label="Authentication mode"><span className={`auth-tab-indicator ${mode === 'register' ? 'register' : ''}`} aria-hidden="true" /><button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => switchMode('login')}>Sign in</button><button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => switchMode('register')}>Register</button></div>
 
-            <div>
-              <label className="block text-sm font-medium text-ink mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                className="w-full rounded-lg border border-line px-3 py-2 text-ink transition-shadow focus:border-brass focus:outline-none focus:ring-2 focus:ring-brass/30"
-                placeholder="••••••••"
-              />
-            </div>
+          <motion.form onSubmit={handleSubmit} className="auth-form" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
+            {mode === 'register' && <>
+              <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><FloatingLabelField id="display-name" label="Display name" icon={User}><input id="display-name" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required placeholder=" " autoComplete="name" /></FloatingLabelField></motion.div>
+              <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }} className="field-group"><label className="select-label" htmlFor="role">Role</label><div className="select-shell"><UsersRound size={17} aria-hidden="true" /><select id="role" value={role} onChange={(e) => setRole(e.target.value)}><option value="analyst">Analyst</option><option value="compliance_officer">Compliance officer</option><option value="reviewer">Reviewer</option></select><ChevronDown size={16} aria-hidden="true" /></div></motion.div>
+            </>}
+            <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><FloatingLabelField id="email" label="Email address" icon={Mail}><input id="email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" placeholder=" " /></FloatingLabelField></motion.div>
+            <motion.div variants={fadeUp} transition={{ duration: 0.3, ease }}><div className="field-label-row"><span>Password</span>{mode === 'login' && <span className="forgot-text">Forgot password?</span>}</div><div className="field-shell"><LockKeyhole className="field-icon" size={17} strokeWidth={1.7} aria-hidden="true" /><input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder=" " aria-label="Password" /><label htmlFor="password">Password</label><button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></motion.div>
 
-            {success && <p className="text-sm text-emerald">{success}</p>}
-            {error && <p className="text-sm text-rust">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-lg bg-ink px-4 py-2 font-medium text-paper-raised transition-colors hover:bg-ink-2 disabled:bg-ink-soft"
-            >
-              {isLoading
-                ? mode === 'login'
-                  ? 'Signing in…'
-                  : 'Creating account…'
-                : mode === 'login'
-                  ? 'Sign in'
-                  : 'Create account'}
-            </button>
-          </form>
-
-        </div>
+            {success && <motion.p className="form-message success-message" role="status" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}><CircleCheck size={16} />{success}</motion.p>}
+            {error && <motion.p className="form-message error-message" role="alert" initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}><Shield size={16} />{error}</motion.p>}
+            <motion.button type="submit" disabled={isLoading} className="auth-submit" whileHover={!isLoading ? { y: -2 } : undefined} whileTap={!isLoading ? { scale: 0.985 } : undefined}>{isLoading ? <><span className="loading-spinner" aria-hidden="true" />{mode === 'login' ? 'Signing in…' : 'Creating account…'}</> : <>{mode === 'login' ? 'Sign in securely' : 'Create account'}<ArrowRight size={17} /></>}</motion.button>
+          </motion.form>
+          <div className="card-footer"><LockKeyhole size={13} /> Secure access for authorised users only.</div>
+        </motion.section>
+        <p className="stage-note">AI Audit Trail · Cryptographically verifiable records for modern teams</p>
       </main>
     </div>
   )
