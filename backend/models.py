@@ -1,9 +1,17 @@
-from sqlalchemy import create_engine, Column, String, Text, Integer, Float
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, String, Text, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./audit.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set in environment variables")
+
+# PostgreSQL does not require check_same_thread
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -45,30 +53,6 @@ class AuditLogEntry(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-
-    # Add new columns for existing databases
-    from sqlalchemy import inspect, text
-    inspector = inspect(engine)
-    columns = [c['name'] for c in inspector.get_columns('audit_log_entries')]
-    with engine.connect() as conn:
-        if 'prompt_tokens' not in columns:
-            conn.execute(text("ALTER TABLE audit_log_entries ADD COLUMN prompt_tokens INTEGER"))
-        if 'completion_tokens' not in columns:
-            conn.execute(text("ALTER TABLE audit_log_entries ADD COLUMN completion_tokens INTEGER"))
-        conn.commit()
-
-    # Backfill estimated tokens for existing entries (new entries get exact from API)
-    with SessionLocal() as db:
-        from sqlalchemy import text as sql_text
-        db.execute(
-            sql_text(
-                "UPDATE audit_log_entries "
-                "SET prompt_tokens = MAX(1, LENGTH(input_text) / 4), "
-                "completion_tokens = MAX(1, LENGTH(output_text) / 4) "
-                "WHERE source_type != 'review_event' AND prompt_tokens IS NULL"
-            )
-        )
-        db.commit()
 
     from auth import seed_demo_users
 
