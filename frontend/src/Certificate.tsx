@@ -143,7 +143,7 @@ export function Certificate() {
             <h2 className="mb-4 text-sm font-bold text-slate-900">Entry Identity</h2>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Decision ID</p>
+                <p className="text-xs font-semibold text-slate-500">response_id</p>
                 <p className="mt-1 break-all font-mono text-sm font-medium text-slate-900">
                   {entry.decision_id}
                 </p>
@@ -254,7 +254,7 @@ export function Certificate() {
 
             {entry.parent_decision_id && (
               <div>
-                <p className="mb-1.5 text-xs font-semibold text-slate-600">Parent Decision ID</p>
+                <p className="mb-1.5 text-xs font-semibold text-slate-600">Parent response_id</p>
                 <div className="break-all font-mono text-xs text-slate-700">
                   {entry.parent_decision_id}
                 </div>
