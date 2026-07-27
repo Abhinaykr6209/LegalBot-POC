@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { ShieldCheck, Activity } from 'lucide-react'
+import { ShieldCheck, Activity, Database } from 'lucide-react'
 import { useAuth } from './AuthContext'
 import { LoginPage } from './LoginPage'
 import { NavBar } from './NavBar'
 import { ChatConsole } from './ChatConsole'
 import { AuditTrail } from './AuditTrail'
+import { DatabaseViewer } from './DatabaseViewer'
 import { Certificate } from './Certificate'
 
-type Tab = 'chat' | 'audit'
+type Tab = 'chat' | 'audit' | 'database'
 
 const AUDIT_ROLES = new Set(['compliance_officer', 'reviewer'])
 
@@ -85,6 +86,24 @@ function AppContent() {
                 Audit Trail restricted to Compliance Officers
               </p>
             )}
+            {canViewAudit && (
+              <button
+                onClick={() => setActiveTab('database')}
+                className={`relative pb-3 text-sm font-semibold transition-colors ${
+                  showTab === 'database'
+                    ? 'text-blue-600'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Database
+                </div>
+                {showTab === 'database' && (
+                  <span className="absolute bottom-0 left-0 h-0.5 w-full rounded-t-full bg-blue-600" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -102,6 +121,12 @@ function AppContent() {
         {canViewAudit && showTab === 'audit' && (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <AuditTrail />
+          </div>
+        )}
+
+        {canViewAudit && showTab === 'database' && (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DatabaseViewer />
           </div>
         )}
       </main>

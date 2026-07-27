@@ -109,20 +109,38 @@ function showSignedIn(container, user) {
   message.className = 'signin-message';
   message.textContent = `Signed in as: ${user.display_name} (@${user.username || 'user'})`;
 
+  const noteInput = document.createElement('textarea');
+  noteInput.className = 'form-input note-input';
+  noteInput.id = 'log-note';
+  noteInput.placeholder = 'What are you working on? (optional)';
+  noteInput.rows = 2;
+
   const logBtn = document.createElement('button');
   logBtn.textContent = 'Log current tab';
   logBtn.className = 'btn btn-primary';
   logBtn.onclick = () => {
-    chrome.runtime.sendMessage({ type: 'LOG_ACTIVE_TAB' }, (response) => {
-      if (chrome.runtime.lastError) {
-        alert(chrome.runtime.lastError.message);
-        return;
-      }
-      if (!response?.ok) {
-        alert(response?.error || 'Could not log tab');
-        return;
-      }
-      alert(`Logged: ${response.aiSystem}\nRefresh Audit Trail in the web app.`);
+    chrome.storage.local.get(['auth_user'], (result) => {
+      const user = result.auth_user || {};
+      chrome.runtime.sendMessage(
+        {
+          type: 'LOG_ACTIVE_TAB',
+          user_id: user.id || '',
+          user_display_name: user.display_name || '',
+          user_note: noteInput.value.trim(),
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            alert(chrome.runtime.lastError.message);
+            return;
+          }
+          if (!response?.ok) {
+            alert(response?.error || 'Could not log tab');
+            return;
+          }
+          noteInput.value = '';
+          alert(`Logged: ${response.aiSystem}\nRefresh Audit Trail in the web app.`);
+        }
+      );
     });
   };
 

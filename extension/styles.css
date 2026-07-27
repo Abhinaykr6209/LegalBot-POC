@@ -194,3 +194,10 @@ body {
 .signin-section .btn + .btn {
   margin-top: 0;
 }
+
+.note-input {
+  resize: vertical;
+  min-height: 36px;
+  font-family: inherit;
+  line-height: 1.4;
+}

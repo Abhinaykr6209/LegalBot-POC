@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, String, Text, Integer
+from sqlalchemy import create_engine, Column, String, Text, Integer, DateTime, ForeignKey
+from datetime import datetime, timezone
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -49,6 +50,14 @@ class AuditLogEntry(Base):
     completion_tokens = Column(Integer, nullable=True)
     prev_hash = Column(String, nullable=False)
     entry_hash = Column(String, nullable=False)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    token = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 def init_db():

@@ -1,20 +1,13 @@
-# POC auth: username/password with hashed passwords in SQLite.
-# Tokens are still in-memory (cleared on server restart) — fine for demo.
-
 import hashlib
 import secrets
 import uuid
-from typing import Optional, Dict
+from typing import Optional
 
 from fastapi import HTTPException, Header, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from models import User, SessionLocal
-
-
-# In-memory token store: token -> user id (lost on server restart)
-_token_store: Dict[str, str] = {}
+from models import User, AuthSession, SessionLocal
 
 
 class UserResponse(BaseModel):
@@ -85,6 +78,13 @@ def seed_demo_users(db: Session) -> None:
     db.commit()
 
 
+def _store_token(db: Session, user_id: str) -> str:
+    token = secrets.token_hex(32)
+    db.add(AuthSession(token=token, user_id=user_id))
+    db.commit()
+    return token
+
+
 def register_user(request: RegisterRequest, db: Session) -> LoginResponse:
     username = request.username.strip().lower()
     if db.query(User).filter(User.username == username).first():
@@ -103,8 +103,7 @@ def register_user(request: RegisterRequest, db: Session) -> LoginResponse:
     db.commit()
     db.refresh(user)
 
-    token = secrets.token_hex(16)
-    _token_store[token] = user.id
+    token = _store_token(db, user.id)
     return LoginResponse(token=token, user=_user_to_response(user))
 
 
@@ -118,8 +117,7 @@ def login_user(request: LoginRequest, db: Session) -> LoginResponse:
     if not secrets.compare_digest(expected, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    token = secrets.token_hex(16)
-    _token_store[token] = user.id
+    token = _store_token(db, user.id)
     return LoginResponse(token=token, user=_user_to_response(user))
 
 
@@ -134,11 +132,11 @@ def resolve_user_from_authorization(
     if len(parts) != 2 or parts[0].lower() != "bearer":
         return None
 
-    user_id = _token_store.get(parts[1])
-    if not user_id:
+    session = db.query(AuthSession).filter(AuthSession.token == parts[1]).first()
+    if not session:
         return None
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == session.user_id).first()
     if not user:
         return None
 

@@ -65,7 +65,7 @@ function markLogged(key) {
   }
 }
 
-function postDetectorEvent(tab, { force = false } = {}) {
+function postDetectorEvent(tab, { force = false, user_id = '', user_display_name = '', user_note = '' } = {}) {
   if (!tab?.url) return false;
 
   const aiSystem = getDomainLabel(tab.url);
@@ -78,7 +78,7 @@ function postDetectorEvent(tab, { force = false } = {}) {
 
   markLogged(key);
 
-  chrome.storage.local.get(['auth_token'], (result) => {
+  chrome.storage.local.get(['auth_token', 'auth_user'], (result) => {
     const headers = {
       'Content-Type': 'application/json',
     };
@@ -87,11 +87,15 @@ function postDetectorEvent(tab, { force = false } = {}) {
       headers['Authorization'] = `Bearer ${result.auth_token}`;
     }
 
+    const storedUser = result.auth_user || {};
     const payload = {
       domain: new URL(tab.url).hostname,
       matched_ai_system: aiSystem,
       tab_title: tab.title || '',
       timestamp_client: new Date().toISOString(),
+      user_id: user_id || storedUser.id || '',
+      user_display_name: user_display_name || storedUser.display_name || '',
+      user_note: user_note || '',
     };
 
     fetch('http://localhost:8000/api/detector/event', {
@@ -160,7 +164,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         return;
       }
-      const logged = postDetectorEvent(tabs[0], { force: true });
+      const logged = postDetectorEvent(tabs[0], {
+        force: true,
+        user_id: message.user_id || '',
+        user_display_name: message.user_display_name || '',
+        user_note: message.user_note || '',
+      });
       sendResponse({ ok: logged, aiSystem });
     });
     return true;

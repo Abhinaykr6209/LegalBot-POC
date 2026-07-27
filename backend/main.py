@@ -95,11 +95,22 @@ class ReviewRequest(BaseModel):
     comment: str
 
 
+class DbQueryResponse(BaseModel):
+    entries: list[AuditLogResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
+
 class DetectorEventRequest(BaseModel):
     domain: str
     matched_ai_system: str
     tab_title: str
     timestamp_client: str
+    user_id: Optional[str] = None
+    user_display_name: Optional[str] = None
+    user_note: Optional[str] = None
 
 
 @app.get("/health")
@@ -190,6 +201,47 @@ def verify_audit_chain(
 ):
     result = verify_chain(db=db)
     return result
+
+
+@app.get("/api/db/audit-log-entries", response_model=DbQueryResponse)
+def db_view_audit_logs(
+    page: int = 1,
+    per_page: int = 50,
+    sort_by: str = "id",
+    sort_dir: str = "desc",
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+    allowed_sort_cols = {
+        "id", "decision_id", "timestamp_utc", "source_type",
+        "user_display_name", "ai_system", "model_version",
+        "policy_invoked", "downstream_action",
+    }
+    if sort_by not in allowed_sort_cols:
+        sort_by = "id"
+    sort_col = getattr(AuditLogEntry, sort_by)
+    order = sort_col.desc() if sort_dir == "desc" else sort_col.asc()
+
+    query = db.query(AuditLogEntry)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(
+            AuditLogEntry.user_display_name.ilike(like)
+            | AuditLogEntry.ai_system.ilike(like)
+            | AuditLogEntry.source_type.ilike(like)
+            | AuditLogEntry.decision_id.ilike(like)
+            | AuditLogEntry.policy_invoked.ilike(like)
+        )
+    total = query.count()
+    entries = query.order_by(order).offset((page - 1) * per_page).limit(per_page).all()
+    return DbQueryResponse(
+        entries=entries,
+        total=total,
+        page=page,
+        per_page=per_page,
+        total_pages=max(1, (total + per_page - 1) // per_page),
+    )
 
 
 MODEL_PRICING = {
@@ -336,16 +388,29 @@ def log_detector_event(
     if user:
         user_id = user.id
         user_display_name = user.display_name
+    elif request.user_id and request.user_display_name:
+        user_id = request.user_id
+        user_display_name = request.user_display_name
     else:
         user_id = "unknown"
         user_display_name = "Unidentified (extension not signed in)"
 
     tab_title = (request.tab_title or "").strip() or "(untitled tab)"
-    visit_summary = f"Opened {request.matched_ai_system} at {request.domain}"
-    presence_detail = (
+    user_note = (request.user_note or "").strip()
+    note_prefix = f"User note: {user_note} — " if user_note else ""
+    input_text = (
+        f"{note_prefix}Opened {request.matched_ai_system} at {request.domain} — "
+        f"Tab: \"{tab_title}\""
+    )
+    reasoning_summary = (
         f"Browser visit detected to {request.matched_ai_system} ({request.domain}). "
-        f"Tab: “{tab_title}”. "
-        "Only presence is recorded — page content and keystrokes are out of scope for this POC."
+        f"Tab: \"{tab_title}\". "
+        "Enterprise governance scan — only site presence is recorded; "
+        "prompts, responses, and page content are never captured."
+    )
+    output_text = (
+        "External site presence monitored; prompts and responses "
+        "remain private and out of capture scope per security policy."
     )
 
     entry = create_audit_log_entry(
@@ -354,11 +419,11 @@ def log_detector_event(
         user_display_name=user_display_name,
         ai_system=request.matched_ai_system,
         model_version="External SaaS — model version not visible to org",
-        input_text=visit_summary,
+        input_text=input_text,
         input_source="browser_extension",
         policy_invoked="Shadow AI Usage Policy v0.1",
-        reasoning_summary=presence_detail,
-        output_text="No model output captured (external site; presence-only monitoring)",
+        reasoning_summary=reasoning_summary,
+        output_text=output_text,
         downstream_action=f"Shadow AI visit logged — {tab_title}",
         db=db,
     )
