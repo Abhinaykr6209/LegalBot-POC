@@ -8,7 +8,7 @@ import { AuthProvider } from './AuthContext'
 
 // Global animation transition defaults to match the glassmorphic theme
 const defaultTransition = {
-  type: 'spring',
+  type: 'spring'as const,
   stiffness: 300,
   damping: 30,
   restDelta: 0.001
