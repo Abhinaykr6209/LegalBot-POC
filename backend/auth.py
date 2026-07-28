@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 
 from models import User, AuthSession, SessionLocal
 
+import bcrypt
+if not hasattr(bcrypt, "__about__"):
+    bcrypt.__about__ = type("about", (), {"__version__": getattr(bcrypt, "__version__", "4.0.0")})()
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

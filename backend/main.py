@@ -32,15 +32,26 @@ load_dotenv()
 
 app = FastAPI(title="AI Audit Trail POC")
 
+import os
+
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print(f"[WARNING] Database initialization failed on startup: {e}")
 
 
 class CreateAuditLogRequest(BaseModel):
@@ -152,7 +163,9 @@ def chat(
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to process chat message")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to process chat message: {str(e)}")
 
 
 @app.post("/api/audit-logs", response_model=AuditLogResponse)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import { API_BASE_URL } from './config'
 import {
   XAxis,
   YAxis,
@@ -78,7 +79,7 @@ export function AuditTrail() {
     setIsLoading(true)
     setError('')
     try {
-      const response = await fetch('http://localhost:8000/api/audit-logs?limit=100', {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs?limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) throw new Error('Failed to load entries')
@@ -107,7 +108,7 @@ export function AuditTrail() {
 
   const loadReviews = async (responseId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs/${responseId}/reviews`, {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs/${responseId}/reviews`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {
@@ -136,7 +137,7 @@ export function AuditTrail() {
     setIsSubmittingReview(true)
     setError('')
     try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs/${responseId}/review`, {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs/${responseId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, comment: reviewComment }),
@@ -156,7 +157,7 @@ export function AuditTrail() {
     setIsVerifying(true)
     setError('')
     try {
-      const response = await fetch('http://localhost:8000/api/audit-logs/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs/verify`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) throw new Error('Failed to verify chain')
@@ -176,7 +177,7 @@ export function AuditTrail() {
     if (toDate) params.append('to_date', toDate)
 
     try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs/export?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/audit-logs/export?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!response.ok) throw new Error('Export failed')

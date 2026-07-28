@@ -12,6 +12,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL is not set in environment variables")
 
+if DATABASE_URL.startswith("postgresql://") and "+pg8000" not in DATABASE_URL and "+psycopg" not in DATABASE_URL:
+    try:
+        import psycopg2._psycopg
+    except (ImportError, Exception):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+pg8000://", 1)
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

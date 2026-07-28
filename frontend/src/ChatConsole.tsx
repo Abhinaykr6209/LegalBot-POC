@@ -6,6 +6,7 @@ import {
   Paperclip, Loader2, CheckCircle2, ShieldAlert
 } from 'lucide-react'
 import { useAuth } from './AuthContext'
+import { API_BASE_URL } from './config'
 
 type Message = {
   id: string
@@ -78,7 +79,7 @@ export function ChatConsole() {
     ])
 
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

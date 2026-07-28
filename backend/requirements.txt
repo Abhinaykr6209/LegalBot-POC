@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gunicorn
 sqlalchemy
 python-dotenv
 openai
@@ -8,4 +9,5 @@ pytest
 passlib
 bcrypt==4.0.1
 psycopg2-binary==2.9.10
+pg8000
 
