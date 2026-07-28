@@ -19,7 +19,7 @@ import { ChevronDown, Flag, Check, Download, RefreshCw, ShieldAlert, ShieldCheck
 
 type AuditEntry = {
   id: number
-  decision_id: string
+  response_id: string
   timestamp_utc: string
   source_type: string
   user_id: string
@@ -32,7 +32,8 @@ type AuditEntry = {
   reasoning_summary: string
   output_text: string
   downstream_action: string
-  parent_decision_id: string | null
+  parent_response_id: string | null
+  cost_per_response: number | null
   prev_hash: string
   entry_hash: string
 }
@@ -43,7 +44,7 @@ export function AuditTrail() {
   const [isLoading, setIsLoading] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{
     valid: boolean
-    broken_at_decision_id?: string
+    broken_at_response_id?: string
   } | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
 
@@ -91,49 +92,49 @@ export function AuditTrail() {
 
   const hydrateReviewsFromEntries = async (loadedEntries: AuditEntry[]) => {
     const reviewEvents = loadedEntries.filter(
-      (entry) => entry.source_type === 'review_event' && entry.parent_decision_id
+      (entry) => entry.source_type === 'review_event' && entry.parent_response_id
     )
     const grouped: Record<string, AuditEntry[]> = {}
     for (const review of reviewEvents) {
-      const parentId = review.parent_decision_id!
+      const parentId = review.parent_response_id!
       if (!grouped[parentId]) grouped[parentId] = []
       grouped[parentId].push(review)
     }
     setReviews((prev) => ({ ...prev, ...grouped }))
   }
 
-  const loadReviews = async (decisionId: string) => {
+  const loadReviews = async (responseId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs/${decisionId}/reviews`, {
+      const response = await fetch(`http://localhost:8000/api/audit-logs/${responseId}/reviews`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (response.ok) {
         const data = await response.json()
-        setReviews((prev) => ({ ...prev, [decisionId]: data }))
+        setReviews((prev) => ({ ...prev, [responseId]: data }))
       }
     } catch (err) {
       console.error('Failed to load reviews:', err)
     }
   }
 
-  const handleExpandRow = (entryId: number, decisionId: string) => {
+  const handleExpandRow = (entryId: number, responseId: string) => {
     if (expandedId === entryId) {
       setExpandedId(null)
       setReviewingId(null)
     } else {
       setExpandedId(entryId)
-      loadReviews(decisionId)
+      loadReviews(responseId)
       setReviewingId(null)
       setReviewComment('')
     }
   }
 
-  const submitReview = async (decisionId: string, status: 'approved' | 'flagged') => {
+  const submitReview = async (responseId: string, status: 'approved' | 'flagged') => {
     if (!reviewComment.trim()) return setError('Please enter a comment')
     setIsSubmittingReview(true)
     setError('')
     try {
-      const response = await fetch(`http://localhost:8000/api/audit-logs/${decisionId}/review`, {
+      const response = await fetch(`http://localhost:8000/api/audit-logs/${responseId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, comment: reviewComment }),
@@ -141,7 +142,7 @@ export function AuditTrail() {
       if (!response.ok) throw new Error('Failed to submit review')
       setReviewComment('')
       setReviewingId(null)
-      await loadReviews(decisionId)
+      await loadReviews(responseId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit review')
     } finally {
@@ -203,9 +204,9 @@ export function AuditTrail() {
   const formatTimestamp = (ts: string) => new Date(ts).toLocaleString().replace(/\b(am|pm)\b/g, (match) => match.toUpperCase())
   const truncateText = (text: string, maxLen: number = 60) => text.length > maxLen ? text.slice(0, maxLen) + '…' : text
 
-  const reviewedDecisionIds = useMemo(() => new Set(entries.filter((entry) => entry.source_type === 'review_event' && entry.parent_decision_id).map((entry) => entry.parent_decision_id as string)), [entries])
-  const getReviewStatus = (decisionId: string) => reviewedDecisionIds.has(decisionId) || (reviews[decisionId] || []).length > 0
-  const isBrokenChainEntry = (decisionId: string) => verifyResult?.valid === false && verifyResult.broken_at_decision_id === decisionId
+  const reviewedDecisionIds = useMemo(() => new Set(entries.filter((entry) => entry.source_type === 'review_event' && entry.parent_response_id).map((entry) => entry.parent_response_id as string)), [entries])
+  const getReviewStatus = (responseId: string) => reviewedDecisionIds.has(responseId) || (reviews[responseId] || []).length > 0
+  const isBrokenChainEntry = (responseId: string) => verifyResult?.valid === false && verifyResult.broken_at_response_id === responseId
 
   // --- ENTERPRISE GOVERNANCE DASHBOARD METRICS ---
   const [showCharts, setShowCharts] = useState(true)
@@ -221,7 +222,7 @@ export function AuditTrail() {
 
     for (const e of filteredEntries) {
       // Review Stats
-      const entryReviews = reviews[e.decision_id] || []
+      const entryReviews = reviews[e.response_id] || []
       if (entryReviews.some(r => r.downstream_action.includes('flagged'))) flaggedCount++
       else if (entryReviews.length > 0) reviewedCount++
 
@@ -236,16 +237,13 @@ export function AuditTrail() {
       const dateStr = new Date(e.timestamp_utc).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
       if (!timeSeriesMap[dateStr]) timeSeriesMap[dateStr] = { date: dateStr, requests: 0, cost: 0, tokens: 0 }
 
-      // Est Cost & Tokens (Mock calculations for dashboard visualization)
-      const inputLen = e.input_text?.length || 0
-      const outputLen = e.output_text?.length || 0
-      const estTokens = Math.round((inputLen + outputLen) / 4)
-      const estCost = e.model_version.includes('mini') ? (estTokens * 0.000001) : (estTokens * 0.00001)
+      const actualCost = e.cost_per_response ?? 0
+      const actualTokens = (e.prompt_tokens ?? 0) + (e.completion_tokens ?? 0)
 
       timeSeriesMap[dateStr].requests += 1
-      timeSeriesMap[dateStr].tokens += estTokens
-      timeSeriesMap[dateStr].cost += estCost
-      totalCost += estCost
+      timeSeriesMap[dateStr].tokens += actualTokens
+      timeSeriesMap[dateStr].cost += actualCost
+      totalCost += actualCost
     }
 
     const pendingCount = filteredEntries.length - reviewedCount - flaggedCount
@@ -496,8 +494,8 @@ export function AuditTrail() {
 
             {filteredEntries.map((entry) => {
               const isExpanded = expandedId === entry.id
-              const isReviewed = getReviewStatus(entry.decision_id)
-              const isBroken = isBrokenChainEntry(entry.decision_id)
+              const isReviewed = getReviewStatus(entry.response_id)
+              const isBroken = isBrokenChainEntry(entry.response_id)
 
               return (
                 <div key={entry.id} className="relative flex gap-5 mb-4 group">
@@ -507,14 +505,14 @@ export function AuditTrail() {
 
                   <div className="min-w-0 flex-1">
                     <div className={`rounded-xl border bg-white transition-all duration-200 ${isExpanded ? 'border-blue-200 shadow-md ring-1 ring-blue-500/10' : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'}`}>
-                      <button type="button" aria-expanded={isExpanded} onClick={() => handleExpandRow(entry.id, entry.decision_id)} className="flex w-full items-start gap-4 p-4 text-left">
+                      <button type="button" aria-expanded={isExpanded} onClick={() => handleExpandRow(entry.id, entry.response_id)} className="flex w-full items-start gap-4 p-4 text-left">
                         <div className="min-w-0 flex-1 space-y-2">
                           <div className="flex flex-wrap items-center gap-2.5">
                             <span className="font-mono text-[11px] text-slate-400 font-medium">{formatTimestamp(entry.timestamp_utc)}</span>
                             <span className="font-bold text-slate-900 text-sm">{entry.user_display_name}</span>
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide font-bold text-slate-500 border border-slate-200">{entry.source_type}</span>
-                            <Link to={`/certificate/${entry.decision_id}`} onClick={(e) => e.stopPropagation()} className="rounded-md bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600">
-                              {entry.decision_id.slice(0, 8)}...
+                            <Link to={`/certificate/${entry.response_id}`} onClick={(e) => e.stopPropagation()} className="rounded-md bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600">
+                              {entry.response_id.slice(0, 8)}...
                             </Link>
                           </div>
 
@@ -539,8 +537,8 @@ export function AuditTrail() {
                         <div className="mx-4 mb-4 border-t border-slate-100 pt-4 text-[13px]">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 pb-5">
                             <div className="flex flex-col gap-1">
-                              <span className="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Decision ID</span>
-                              <Link to={`/certificate/${entry.decision_id}`} className="font-mono font-medium text-blue-600 hover:underline">{entry.decision_id}</Link>
+                              <span className="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Response ID</span>
+                              <Link to={`/certificate/${entry.response_id}`} className="font-mono font-medium text-blue-600 hover:underline">{entry.response_id}</Link>
                             </div>
                             <div className="flex flex-col gap-1">
                               <span className="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">Policy Invoked</span>
@@ -567,9 +565,9 @@ export function AuditTrail() {
                           <div className="border-t border-slate-100 pt-4 bg-slate-50/50 -mx-4 px-4 pb-1 rounded-b-xl">
                             <h4 className="font-bold text-slate-900 mb-3 text-sm flex items-center gap-2"><Target className="w-4 h-4 text-slate-400"/> Compliance Reviews</h4>
 
-                            {(reviews[entry.decision_id] || []).length > 0 ? (
+                            {(reviews[entry.response_id] || []).length > 0 ? (
                               <div className="space-y-3 mb-4">
-                                {(reviews[entry.decision_id] || []).map((review) => {
+                                {(reviews[entry.response_id] || []).map((review) => {
                                   const isApproved = review.downstream_action.includes('approved')
                                   return (
                                     <div key={review.id} className="bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
@@ -586,17 +584,17 @@ export function AuditTrail() {
 
                             {!isReviewed && (
                               <div className="mt-2 pb-3">
-                                {reviewingId === entry.decision_id ? (
+                                {reviewingId === entry.response_id ? (
                                   <div className="space-y-3 bg-white p-3 border border-slate-200 rounded-lg shadow-sm">
                                     <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Add compliance notes..." className="w-full resize-none rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" rows={2} />
                                     <div className="flex items-center gap-2">
-                                      <button onClick={() => submitReview(entry.decision_id, 'approved')} disabled={isSubmittingReview || !reviewComment.trim()} className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="h-3.5 w-3.5" /> Approve</button>
-                                      <button onClick={() => submitReview(entry.decision_id, 'flagged')} disabled={isSubmittingReview || !reviewComment.trim()} className="flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"><Flag className="h-3.5 w-3.5" /> Flag Issue</button>
+                                      <button onClick={() => submitReview(entry.response_id, 'approved')} disabled={isSubmittingReview || !reviewComment.trim()} className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="h-3.5 w-3.5" /> Approve</button>
+                                      <button onClick={() => submitReview(entry.response_id, 'flagged')} disabled={isSubmittingReview || !reviewComment.trim()} className="flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"><Flag className="h-3.5 w-3.5" /> Flag Issue</button>
                                       <button onClick={() => { setReviewingId(null); setReviewComment(''); }} className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-700">Cancel</button>
                                     </div>
                                   </div>
                                 ) : (
-                                  <button onClick={() => setReviewingId(entry.decision_id)} className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors">
+                                  <button onClick={() => setReviewingId(entry.response_id)} className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors">
                                     + Add Review Note
                                   </button>
                                 )}

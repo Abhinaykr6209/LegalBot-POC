@@ -17,9 +17,10 @@ def create_audit_log_entry(
     reasoning_summary: str,
     output_text: str,
     downstream_action: str,
-    parent_decision_id: str = None,
+    parent_response_id: str = None,
     prompt_tokens: int = None,
     completion_tokens: int = None,
+    cost_per_response: float = None,
     db: Session = None,
 ) -> AuditLogEntry:
     if db is None:
@@ -29,14 +30,14 @@ def create_audit_log_entry(
         close_db = False
 
     try:
-        decision_id = str(uuid.uuid4())
+        response_id = str(uuid.uuid4())
         timestamp_utc = datetime.now(timezone.utc).isoformat()
 
         last_entry = db.query(AuditLogEntry).order_by(AuditLogEntry.id.desc()).first()
         prev_hash = "GENESIS" if last_entry is None else last_entry.entry_hash
 
         entry_fields = {
-            "decision_id": decision_id,
+            "response_id": response_id,
             "timestamp_utc": timestamp_utc,
             "source_type": source_type,
             "user_id": user_id,
@@ -49,13 +50,14 @@ def create_audit_log_entry(
             "reasoning_summary": reasoning_summary,
             "output_text": output_text,
             "downstream_action": downstream_action,
-            "parent_decision_id": parent_decision_id,
+            "parent_response_id": parent_response_id,
+            "cost_per_response": cost_per_response,
         }
 
         entry_hash = compute_hash(entry_fields, prev_hash)
 
         entry = AuditLogEntry(
-            decision_id=decision_id,
+            response_id=response_id,
             timestamp_utc=timestamp_utc,
             source_type=source_type,
             user_id=user_id,
@@ -68,9 +70,10 @@ def create_audit_log_entry(
             reasoning_summary=reasoning_summary,
             output_text=output_text,
             downstream_action=downstream_action,
-            parent_decision_id=parent_decision_id,
+            parent_response_id=parent_response_id,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            cost_per_response=cost_per_response,
             prev_hash=prev_hash,
             entry_hash=entry_hash,
         )
@@ -104,11 +107,11 @@ def verify_chain(db: Session = None) -> dict:
             if entry.prev_hash != prev_hash:
                 return {
                     "valid": False,
-                    "broken_at_decision_id": entry.decision_id,
+                    "broken_at_response_id": entry.response_id,
                 }
 
             entry_fields = {
-                "decision_id": entry.decision_id,
+                "response_id": entry.response_id,
                 "timestamp_utc": entry.timestamp_utc,
                 "source_type": entry.source_type,
                 "user_id": entry.user_id,
@@ -121,7 +124,8 @@ def verify_chain(db: Session = None) -> dict:
                 "reasoning_summary": entry.reasoning_summary,
                 "output_text": entry.output_text,
                 "downstream_action": entry.downstream_action,
-                "parent_decision_id": entry.parent_decision_id,
+                "parent_response_id": entry.parent_response_id,
+                "cost_per_response": entry.cost_per_response,
             }
 
             computed_hash = compute_hash(entry_fields, prev_hash)
@@ -129,7 +133,7 @@ def verify_chain(db: Session = None) -> dict:
             if computed_hash != entry.entry_hash:
                 return {
                     "valid": False,
-                    "broken_at_decision_id": entry.decision_id,
+                    "broken_at_response_id": entry.response_id,
                 }
 
             prev_hash = entry.entry_hash

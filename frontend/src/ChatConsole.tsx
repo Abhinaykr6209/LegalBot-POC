@@ -11,7 +11,7 @@ type Message = {
   id: string
   type: 'user' | 'ai'
   text: string
-  decisionId?: string
+  responseId?: string
 }
 
 function storageKey(userId: string) {
@@ -103,7 +103,7 @@ export function ChatConsole() {
           id: `msg-${Date.now()}`,
           type: 'ai',
           text: data.reply,
-          decisionId: data.decision_id,
+          responseId: data.response_id,
         },
       ])
     } catch (err) {
@@ -210,7 +210,7 @@ export function ChatConsole() {
                         </span>
                         <span className="text-slate-300 hidden sm:inline">•</span>
                         <span className="hidden sm:inline font-mono">
-                          ID: {message.decisionId?.slice(0, 8)}
+                          ID: {message.responseId?.slice(0, 8)}
                         </span>
                         {messageTime && (
                           <>
@@ -228,10 +228,10 @@ export function ChatConsole() {
                       </div>
 
                       {/* Hover Export Action */}
-                      {message.decisionId && (
+                      {message.responseId && (
                         <div className="absolute right-2 top-1.5 hidden opacity-0 transition-opacity group-hover:flex group-hover:opacity-100 items-center">
                           <Link
-                            to={`/certificate/${message.decisionId}`}
+                            to={`/certificate/${message.responseId}`}
                             className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm border border-slate-200 transition-all hover:border-slate-300 hover:text-slate-900"
                           >
                             <FileText className="h-3 w-3 shrink-0" />

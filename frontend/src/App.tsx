@@ -144,7 +144,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<AppContent />} />
-      <Route path="/certificate/:decision_id" element={<Certificate />} />
+      <Route path="/certificate/:response_id" element={<Certificate />} />
     </Routes>
   )
 }

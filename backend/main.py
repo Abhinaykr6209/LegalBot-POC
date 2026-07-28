@@ -26,6 +26,7 @@ from auth import (
     LoginRequest,
     UserResponse,
 )
+from pricing import MODEL_PRICING
 
 load_dotenv()
 
@@ -33,7 +34,7 @@ app = FastAPI(title="AI Audit Trail POC")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,12 +55,12 @@ class CreateAuditLogRequest(BaseModel):
     reasoning_summary: str
     output_text: str
     downstream_action: str
-    parent_decision_id: Optional[str] = None
+    parent_response_id: Optional[str] = None
 
 
 class AuditLogResponse(BaseModel):
     id: int
-    decision_id: str
+    response_id: str
     timestamp_utc: str
     source_type: str
     user_id: str
@@ -72,7 +73,8 @@ class AuditLogResponse(BaseModel):
     reasoning_summary: str
     output_text: str
     downstream_action: str
-    parent_decision_id: Optional[str]
+    parent_response_id: Optional[str]
+    cost_per_response: Optional[float] = None
     prev_hash: str
     entry_hash: str
 
@@ -87,7 +89,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
-    decision_id: str
+    response_id: str
 
 
 class ReviewRequest(BaseModel):
@@ -171,7 +173,7 @@ def create_audit_log(
         reasoning_summary=request.reasoning_summary,
         output_text=request.output_text,
         downstream_action=request.downstream_action,
-        parent_decision_id=request.parent_decision_id,
+        parent_response_id=request.parent_response_id,
         db=db,
     )
     return entry
@@ -214,9 +216,9 @@ def db_view_audit_logs(
     current_user: UserResponse = Depends(require_audit_access),
 ):
     allowed_sort_cols = {
-        "id", "decision_id", "timestamp_utc", "source_type",
+        "id", "response_id", "timestamp_utc", "source_type",
         "user_display_name", "ai_system", "model_version",
-        "policy_invoked", "downstream_action",
+        "policy_invoked", "downstream_action", "cost_per_response",
     }
     if sort_by not in allowed_sort_cols:
         sort_by = "id"
@@ -230,7 +232,7 @@ def db_view_audit_logs(
             AuditLogEntry.user_display_name.ilike(like)
             | AuditLogEntry.ai_system.ilike(like)
             | AuditLogEntry.source_type.ilike(like)
-            | AuditLogEntry.decision_id.ilike(like)
+            | AuditLogEntry.response_id.ilike(like)
             | AuditLogEntry.policy_invoked.ilike(like)
         )
     total = query.count()
@@ -242,14 +244,6 @@ def db_view_audit_logs(
         per_page=per_page,
         total_pages=max(1, (total + per_page - 1) // per_page),
     )
-
-
-MODEL_PRICING = {
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "gpt-4o": {"input": 2.50, "output": 10.00},
-    "gpt-4": {"input": 30.00, "output": 60.00},
-    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-}
 
 
 @app.get("/api/audit-logs/cost")
@@ -334,30 +328,30 @@ def export_audit_logs(
     )
 
 
-@app.get("/api/audit-logs/{decision_id}", response_model=AuditLogResponse)
+@app.get("/api/audit-logs/{response_id}", response_model=AuditLogResponse)
 def get_audit_log(
-    decision_id: str,
+    response_id: str,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_audit_access),
 ):
-    entry = db.query(AuditLogEntry).filter(AuditLogEntry.decision_id == decision_id).first()
+    entry = db.query(AuditLogEntry).filter(AuditLogEntry.response_id == response_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     return entry
 
 
-@app.get("/api/audit-logs/{decision_id}/reviews", response_model=list[AuditLogResponse])
+@app.get("/api/audit-logs/{response_id}/reviews", response_model=list[AuditLogResponse])
 def get_entry_reviews(
-    decision_id: str,
+    response_id: str,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_audit_access),
 ):
-    return get_reviews_for_entry(decision_id, db)
+    return get_reviews_for_entry(response_id, db)
 
 
-@app.post("/api/audit-logs/{decision_id}/review", response_model=AuditLogResponse)
+@app.post("/api/audit-logs/{response_id}/review", response_model=AuditLogResponse)
 def submit_review(
-    decision_id: str,
+    response_id: str,
     request: ReviewRequest,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_audit_access),
@@ -367,7 +361,7 @@ def submit_review(
 
     try:
         review_entry = create_review(
-            decision_id=decision_id,
+            response_id=response_id,
             status=request.status,
             comment=request.comment,
             reviewer=current_user,

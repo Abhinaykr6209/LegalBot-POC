@@ -4,10 +4,18 @@ import uuid
 from typing import Optional
 
 from fastapi import HTTPException, Header, Depends
+from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from models import User, AuthSession, SessionLocal
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _old_pbkdf2_verify(password: str, password_hash: str, password_salt: str) -> bool:
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), password_salt.encode("utf-8"), 100_000)
+    return secrets.compare_digest(digest.hex(), password_hash)
 
 
 class UserResponse(BaseModel):
@@ -34,16 +42,6 @@ class LoginResponse(BaseModel):
     user: UserResponse
 
 
-def _hash_password(password: str, salt: str) -> str:
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt.encode("utf-8"),
-        100_000,
-    )
-    return digest.hex()
-
-
 def _user_to_response(user: User) -> UserResponse:
     return UserResponse(
         id=user.id,
@@ -54,27 +52,29 @@ def _user_to_response(user: User) -> UserResponse:
 
 
 def seed_demo_users(db: Session) -> None:
-    """Create starter accounts if the users table is empty."""
-    if db.query(User).count() > 0:
-        return
-
     demos = [
         ("alice", "demo123", "Alice Chen", "compliance_officer"),
         ("bob", "demo123", "Bob Iyer", "analyst"),
         ("priya", "demo123", "Priya Reviewer", "reviewer"),
     ]
     for username, password, display_name, role in demos:
-        salt = secrets.token_hex(16)
-        db.add(
-            User(
-                id=str(uuid.uuid4()),
-                username=username,
-                password_hash=_hash_password(password, salt),
-                password_salt=salt,
-                display_name=display_name,
-                role=role,
+        existing = db.query(User).filter(User.username == username).first()
+        if existing:
+            existing.password_hash = pwd_context.hash(password)
+            existing.password_salt = ""
+            existing.display_name = display_name
+            existing.role = role
+        else:
+            db.add(
+                User(
+                    id=str(uuid.uuid4()),
+                    username=username,
+                    password_hash=pwd_context.hash(password),
+                    password_salt="",
+                    display_name=display_name,
+                    role=role,
+                )
             )
-        )
     db.commit()
 
 
@@ -90,12 +90,10 @@ def register_user(request: RegisterRequest, db: Session) -> LoginResponse:
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    salt = secrets.token_hex(16)
     user = User(
         id=str(uuid.uuid4()),
         username=username,
-        password_hash=_hash_password(request.password, salt),
-        password_salt=salt,
+        password_hash=pwd_context.hash(request.password),
         display_name=request.display_name.strip(),
         role=request.role.strip() or "analyst",
     )
@@ -113,8 +111,18 @@ def login_user(request: LoginRequest, db: Session) -> LoginResponse:
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    expected = _hash_password(request.password, user.password_salt)
-    if not secrets.compare_digest(expected, user.password_hash):
+    verified = False
+    try:
+        verified = pwd_context.verify(request.password, user.password_hash)
+    except (ValueError, TypeError):
+        pass
+
+    if not verified and user.password_salt:
+        verified = _old_pbkdf2_verify(request.password, user.password_hash, user.password_salt)
+        if verified:
+            user.password_hash = pwd_context.hash(request.password)
+
+    if not verified:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token = _store_token(db, user.id)

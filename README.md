@@ -83,8 +83,8 @@ Frontend runs at: `http://localhost:5173`
 2. **Chat Console:**
    - Type message in text input
    - Press Enter or click "Send"
-   - AI response logged to audit trail with decision_id
-   - Each response shows its decision_id for reference
+   - AI response logged to audit trail with response_id
+   - Each response shows its response_id for reference
 
 3. **Audit Trail:**
    - Browse all audit entries newest-first
@@ -118,7 +118,7 @@ All audit log entries contain these 17 fields:
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
 | `id` | integer | Internal auto-increment row ID | 1 |
-| `decision_id` | UUID string | Unique identifier for this entry | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+| `response_id` | UUID string | Unique identifier for this entry | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
 | `timestamp_utc` | ISO 8601 string | Entry creation time in UTC | `2026-07-21T13:25:00.123456+00:00` |
 | `source_type` | string enum | Where this entry originated | `"chat_console"`, `"shadow_detector"`, `"review_event"` |
 | `user_id` | string | User/session identifier | `"u1"`, `"unknown"` |
@@ -131,7 +131,7 @@ All audit log entries contain these 17 fields:
 | `reasoning_summary` | text | AI reasoning or review comment | `"Simple arithmetic"`, `"Potential bias detected"`, `"N/A"` |
 | `output_text` | text | AI response or review comment | `"4"`, `"This looks good."`, `"N/A"` |
 | `downstream_action` | string | What happened to this entry | `"Response displayed to user in chat UI"`, `"Review recorded: approved"`, `"Tab opened: ChatGPT"` |
-| `parent_decision_id` | UUID string or null | Links review_event to original entry | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`, `null` |
+| `parent_response_id` | UUID string or null | Links review_event to original entry | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`, `null` |
 | `prev_hash` | SHA-256 hex string | Hash of previous entry in chain | `"43106ca51d1f20d0ae1672b723d062b01e1431661b6cb228b63876e00bfecd8d"`, `"GENESIS"` |
 | `entry_hash` | SHA-256 hex string | This entry's hash for tamper-evidence | `"95c6a3824d8e4e682c9ee24749fc6cd2258c802bc4b219831c179eb70d0013a8"` |
 
@@ -143,7 +143,7 @@ All audit log entries contain these 17 fields:
 
 ### Audit Log (all require Bearer token)
 - `GET /api/audit-logs?limit=10&offset=0` — List entries paginated
-- `GET /api/audit-logs/{decision_id}` — Get single entry by ID
+- `GET /api/audit-logs/{response_id}` — Get single entry by ID
 - `GET /api/audit-logs/verify` — Verify hash chain integrity
 - `GET /api/audit-logs/export?format=json|csv` — Export with filters
 - `POST /api/audit-logs` — Create entry (testing only)
@@ -152,8 +152,8 @@ All audit log entries contain these 17 fields:
 - `POST /api/chat` — Send message, get AI response, log to audit trail
 
 ### Reviews (requires Bearer token)
-- `GET /api/audit-logs/{decision_id}/reviews` — Get reviews for entry
-- `POST /api/audit-logs/{decision_id}/review` — Add approval/flag review
+- `GET /api/audit-logs/{response_id}/reviews` — Get reviews for entry
+- `POST /api/audit-logs/{response_id}/review` — Add approval/flag review
 
 ### Shadow Detector (auth optional)
 - `POST /api/detector/event` — Log browser extension event
@@ -167,7 +167,7 @@ All audit log entries contain these 17 fields:
 
 ### 2. **Append-Only Design**
 - No UPDATE or DELETE operations on audit entries
-- Reviews create new entries that reference parents via `parent_decision_id`
+- Reviews create new entries that reference parents via `parent_response_id`
 - Original chat responses never modified (chain integrity preserved)
 
 ### 3. **Optional Authentication**

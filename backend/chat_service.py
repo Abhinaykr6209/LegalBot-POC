@@ -4,6 +4,7 @@ from openai import OpenAI
 from sqlalchemy.orm import Session
 from audit_service import create_audit_log_entry
 from auth import UserResponse
+from pricing import calculate_cost
 
 
 def call_chat_api(message: str, model_name: str) -> dict:
@@ -61,6 +62,10 @@ def process_chat_message(
     api_response = call_chat_api(message, model_name)
     parsed_response = parse_response(api_response["content"])
 
+    prompt_tokens = api_response.get("prompt_tokens", 0)
+    completion_tokens = api_response.get("completion_tokens", 0)
+    cost = calculate_cost(model_name, prompt_tokens, completion_tokens)
+
     entry = create_audit_log_entry(
         source_type="chat_console",
         user_id=current_user.id,
@@ -73,12 +78,13 @@ def process_chat_message(
         reasoning_summary=parsed_response["rationale"],
         output_text=parsed_response["reply"],
         downstream_action="Response displayed to user in chat UI",
-        prompt_tokens=api_response.get("prompt_tokens"),
-        completion_tokens=api_response.get("completion_tokens"),
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        cost_per_response=cost,
         db=db,
     )
 
     return {
         "reply": parsed_response["reply"],
-        "decision_id": entry.decision_id,
+        "response_id": entry.response_id,
     }

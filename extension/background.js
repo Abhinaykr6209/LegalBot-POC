@@ -98,7 +98,7 @@ function postDetectorEvent(tab, { force = false, user_id = '', user_display_name
       user_note: user_note || '',
     };
 
-    fetch('http://localhost:8000/api/detector/event', {
+    fetch('http://localhost:8001/api/detector/event', {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(payload),

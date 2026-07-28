@@ -55,8 +55,8 @@ def test_audit_log_chain_creation_and_verification(test_db):
         db=test_db,
     )
 
-    assert entry1.decision_id is not None
-    assert entry2.decision_id is not None
+    assert entry1.response_id is not None
+    assert entry2.response_id is not None
     assert entry1.entry_hash is not None
     assert entry2.entry_hash is not None
     assert entry1.prev_hash == "GENESIS"
@@ -106,7 +106,7 @@ def test_audit_log_chain_corruption_detection(test_db):
 
     result = verify_chain(db=test_db)
     assert result["valid"] is False
-    assert result["broken_at_decision_id"] == entry1.decision_id
+    assert result["broken_at_response_id"] == entry1.response_id
 
 
 def test_cost_aggregation(test_db):

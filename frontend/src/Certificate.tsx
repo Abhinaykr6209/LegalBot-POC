@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext'
 
 type AuditEntry = {
   id: number
-  decision_id: string
+  response_id: string
   timestamp_utc: string
   source_type: string
   user_id: string
@@ -18,13 +18,14 @@ type AuditEntry = {
   reasoning_summary: string
   output_text: string
   downstream_action: string
-  parent_decision_id: string | null
+  parent_response_id: string | null
+  cost_per_response: number | null
   prev_hash: string
   entry_hash: string
 }
 
 export function Certificate() {
-  const { decision_id } = useParams()
+  const { response_id } = useParams()
   const navigate = useNavigate()
   const [entry, setEntry] = useState<AuditEntry | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -42,7 +43,7 @@ export function Certificate() {
       setError('')
       try {
         const response = await fetch(
-          `http://localhost:8000/api/audit-logs/${decision_id}`,
+          `http://localhost:8000/api/audit-logs/${response_id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (!response.ok) throw new Error('Entry not found')
@@ -56,7 +57,7 @@ export function Certificate() {
     }
 
     loadEntry()
-  }, [decision_id, token, isAuthenticated, navigate])
+  }, [response_id, token, isAuthenticated, navigate])
 
   if (isLoading) {
     return (
@@ -145,7 +146,7 @@ export function Certificate() {
               <div>
                 <p className="text-xs font-semibold text-slate-500">response_id</p>
                 <p className="mt-1 break-all font-mono text-sm font-medium text-slate-900">
-                  {entry.decision_id}
+                  {entry.response_id}
                 </p>
               </div>
               <div>
@@ -252,11 +253,11 @@ export function Certificate() {
               </div>
             </div>
 
-            {entry.parent_decision_id && (
+            {entry.parent_response_id && (
               <div>
                 <p className="mb-1.5 text-xs font-semibold text-slate-600">Parent response_id</p>
                 <div className="break-all font-mono text-xs text-slate-700">
-                  {entry.parent_decision_id}
+                  {entry.parent_response_id}
                 </div>
               </div>
             )}

@@ -31,7 +31,7 @@ def export_as_json(entries: List[AuditLogEntry]) -> str:
     data = [
         {
             "id": e.id,
-            "decision_id": e.decision_id,
+            "response_id": e.response_id,
             "timestamp_utc": e.timestamp_utc,
             "source_type": e.source_type,
             "user_id": e.user_id,
@@ -44,7 +44,8 @@ def export_as_json(entries: List[AuditLogEntry]) -> str:
             "reasoning_summary": e.reasoning_summary,
             "output_text": e.output_text,
             "downstream_action": e.downstream_action,
-            "parent_decision_id": e.parent_decision_id,
+            "parent_response_id": e.parent_response_id,
+            "cost_per_response": e.cost_per_response,
             "prev_hash": e.prev_hash,
             "entry_hash": e.entry_hash,
         }
@@ -57,7 +58,7 @@ def export_as_csv(entries: List[AuditLogEntry]) -> str:
     output = io.StringIO()
     fieldnames = [
         "id",
-        "decision_id",
+        "response_id",
         "timestamp_utc",
         "source_type",
         "user_id",
@@ -70,7 +71,8 @@ def export_as_csv(entries: List[AuditLogEntry]) -> str:
         "reasoning_summary",
         "output_text",
         "downstream_action",
-        "parent_decision_id",
+        "parent_response_id",
+        "cost_per_response",
         "prev_hash",
         "entry_hash",
     ]
@@ -82,7 +84,7 @@ def export_as_csv(entries: List[AuditLogEntry]) -> str:
         writer.writerow(
             {
                 "id": e.id,
-                "decision_id": e.decision_id,
+                "response_id": e.response_id,
                 "timestamp_utc": e.timestamp_utc,
                 "source_type": e.source_type,
                 "user_id": e.user_id,
@@ -95,7 +97,8 @@ def export_as_csv(entries: List[AuditLogEntry]) -> str:
                 "reasoning_summary": e.reasoning_summary,
                 "output_text": e.output_text,
                 "downstream_action": e.downstream_action,
-                "parent_decision_id": e.parent_decision_id,
+                "parent_response_id": e.parent_response_id,
+                "cost_per_response": e.cost_per_response,
                 "prev_hash": e.prev_hash,
                 "entry_hash": e.entry_hash,
             }

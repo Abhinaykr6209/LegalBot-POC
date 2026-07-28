@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Database, Search, Re
 
 type AuditEntry = {
   id: number
-  decision_id: string
+  response_id: string
   timestamp_utc: string
   source_type: string
   user_id: string
@@ -17,9 +17,10 @@ type AuditEntry = {
   reasoning_summary: string
   output_text: string
   downstream_action: string
-  parent_decision_id: string | null
+  parent_response_id: string | null
   prev_hash: string
   entry_hash: string
+  cost_per_response: number // Added cost field[cite: 1]
 }
 
 type DbQueryResponse = {
@@ -38,7 +39,8 @@ const SORTABLE_COLS: { key: string; label: string }[] = [
   { key: 'ai_system', label: 'AI System' },
   { key: 'model_version', label: 'Model' },
   { key: 'policy_invoked', label: 'Policy' },
-  { key: 'decision_id', label: 'Decision ID' },
+  { key: 'response_id', label: 'Response ID' },
+  { key: 'cost_per_response', label: 'Cost per Response' }, // Added to sortable columns[cite: 1]
   { key: 'downstream_action', label: 'Action' },
 ]
 
@@ -101,10 +103,11 @@ export function DatabaseViewer() {
   const handleExportCsv = () => {
     if (!data || data.entries.length === 0) return
     const cols = [
-      'id', 'decision_id', 'timestamp_utc', 'source_type', 'user_id',
+      'id', 'response_id', 'timestamp_utc', 'source_type', 'user_id',
       'user_display_name', 'ai_system', 'model_version', 'input_text',
       'input_source', 'policy_invoked', 'reasoning_summary', 'output_text',
-      'downstream_action', 'parent_decision_id', 'prev_hash', 'entry_hash',
+      'downstream_action', 'parent_response_id', 'prev_hash', 'entry_hash',
+      'cost_per_response', // Added to CSV columns[cite: 1]
     ]
     const escape = (v: unknown) => {
       const s = String(v ?? '')
@@ -227,7 +230,10 @@ export function DatabaseViewer() {
                     <td className="px-3 py-2 text-slate-700">{entry.ai_system}</td>
                     <td className="px-3 py-2 text-slate-600">{entry.model_version}</td>
                     <td className="px-3 py-2 text-slate-600 max-w-[120px] truncate">{entry.policy_invoked}</td>
-                    <td className="px-3 py-2 font-mono text-blue-600 max-w-[100px] truncate">{entry.decision_id.slice(0, 12)}</td>
+                    <td className="px-3 py-2 font-mono text-blue-600 max-w-[100px] truncate">{entry.response_id.slice(0, 12)}</td>
+                    <td className="px-3 py-2 font-mono text-slate-800 whitespace-nowrap">
+                      {entry.cost_per_response ? `$${Number(entry.cost_per_response).toFixed(6)}` : '$0.000000'}
+                    </td>
                     <td className="px-3 py-2 text-slate-600 max-w-[120px] truncate">{truncate(entry.downstream_action, 30)}</td>
                     <td className="px-3 py-2 font-mono text-[10px] text-slate-400 max-w-[80px] truncate">{entry.entry_hash.slice(0, 10)}</td>
                   </tr>
@@ -274,7 +280,7 @@ export function DatabaseViewer() {
             .map((entry) => (
               <div key={entry.id} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3 text-xs">
                 <DetailField label="ID" value={`#${entry.id}`} mono />
-                <DetailField label="Decision ID" value={entry.decision_id} mono />
+                <DetailField label="Response ID" value={entry.response_id} mono />
                 <DetailField label="Timestamp (UTC)" value={entry.timestamp_utc} mono />
                 <DetailField label="Source Type" value={entry.source_type} />
                 <DetailField label="User ID" value={entry.user_id} mono />
@@ -283,8 +289,9 @@ export function DatabaseViewer() {
                 <DetailField label="Model Version" value={entry.model_version} />
                 <DetailField label="Input Source" value={entry.input_source} />
                 <DetailField label="Policy Invoked" value={entry.policy_invoked} />
+                <DetailField label="Cost per Response" value={entry.cost_per_response ? `$${Number(entry.cost_per_response).toFixed(6)}` : '$0.000000'} mono />
                 <DetailField label="Downstream Action" value={entry.downstream_action} />
-                <DetailField label="Parent Decision ID" value={entry.parent_decision_id || '—'} mono />
+                <DetailField label="Parent Response ID" value={entry.parent_response_id || '—'} mono />
                 <div className="col-span-full flex flex-col gap-1 mt-2">
                   <span className="font-semibold text-slate-500 uppercase tracking-wider">Input Text</span>
                   <div className="rounded-lg bg-white border border-slate-200 p-3 text-slate-800 whitespace-pre-wrap font-medium">{entry.input_text || 'N/A'}</div>
