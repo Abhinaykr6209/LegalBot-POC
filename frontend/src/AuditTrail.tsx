@@ -34,6 +34,8 @@ type AuditEntry = {
   downstream_action: string
   parent_response_id: string | null
   cost_per_response: number | null
+  prompt_tokens?: number
+  completion_tokens?: number
   prev_hash: string
   entry_hash: string
 }
