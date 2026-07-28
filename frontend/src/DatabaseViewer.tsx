@@ -50,7 +50,7 @@ export function DatabaseViewer() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
-  const [perPage, setPerPage] = useState(50)
+  const [perPage] = useState(10)
   const [sortBy, setSortBy] = useState('id')
   const [sortDir, setSortDir] = useState('desc')
   const [search, setSearch] = useState('')
