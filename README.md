@@ -6,58 +6,58 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License" />
 </p>
 
-<h1 align="center">🛡️ AI Audit Trail</h1>
+<h1 align="center">AI Audit Trail</h1>
 
 <p align="center">
   <strong>Enterprise-grade AI governance platform with blockchain-style tamper-proof audit logging, role-based access control, and Shadow AI detection.</strong>
 </p>
 
 <p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-api-reference">API Reference</a> •
-  <a href="#-deployment">Deployment</a> •
-  <a href="#-contributing">Contributing</a>
+  <a href="#features">Features</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#api-reference">API Reference</a> •
+  <a href="#deployment">Deployment</a> •
+  <a href="#contributing">Contributing</a>
 </p>
 
 ---
 
-## ✨ Features
+## Features
 
-### 🔗 Tamper-Proof Audit Chain
+### Tamper-Proof Audit Chain
 Every AI interaction is logged with a **SHA-256 hash chain** — each entry references the previous entry's hash, making any retroactive modification instantly detectable. A built-in chain verification endpoint lets you validate the entire audit history in one call.
 
-### 💬 AI Chat Console
+### AI Chat Console
 A built-in chat interface powered by **OpenAI GPT-4o-mini** that automatically logs every prompt, response, model rationale, token usage, and cost — all linked to the authenticated user.
 
-### 🔍 Shadow AI Detector
+### Shadow AI Detector
 A **Chrome Extension** that passively monitors browser tabs for visits to external AI services (ChatGPT, Microsoft Copilot, GitHub Copilot). Only site-level metadata is recorded — **no prompts, responses, or page content are ever captured**.
 
-### 🔐 Role-Based Access Control
+### Role-Based Access Control
 Three built-in roles with differentiated permissions:
 
 | Role | Chat | Audit Trail | Database Viewer | Reviews |
 |------|:----:|:-----------:|:---------------:|:-------:|
-| **Analyst** | ✅ | ❌ | ❌ | ❌ |
-| **Reviewer** | ✅ | ✅ | ✅ | ✅ |
-| **Compliance Officer** | ✅ | ✅ | ✅ | ✅ |
+| **Analyst** | Yes | No | No | No |
+| **Reviewer** | Yes | Yes | Yes | Yes |
+| **Compliance Officer** | Yes | Yes | Yes | Yes |
 
-### 📊 Cost Analytics
+### Cost Analytics
 Track AI spend across models with per-response cost calculation. Filter by date range and view breakdowns by model version.
 
-### 📜 Audit Trail Certificates
+### Audit Trail Certificates
 Generate shareable, verifiable certificates for individual audit entries — perfect for compliance documentation and regulatory reporting.
 
-### 📤 Data Export
+### Data Export
 Export the complete audit trail as **JSON** or **CSV** with optional filters for source type and date range.
 
-### 👨‍⚖️ Human Review Workflow
+### Human Review Workflow
 Compliance officers and reviewers can **approve** or **flag** any AI response, with the review itself logged as an immutable audit entry linked to the original response.
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -127,7 +127,7 @@ LegalBot/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -140,14 +140,14 @@ LegalBot/
 
 ---
 
-### 1️⃣ Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/Abhinaykr6209/LegalBot.git
 cd LegalBot
 ```
 
-### 2️⃣ Backend Setup
+### 2. Backend Setup
 
 ```bash
 cd backend
@@ -182,7 +182,7 @@ uvicorn main:app --reload --port 8000
 
 > The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for the interactive Swagger UI.
 
-### 3️⃣ Frontend Setup
+### 3. Frontend Setup
 
 ```bash
 cd frontend
@@ -196,7 +196,7 @@ npm run dev
 
 > The frontend will be available at `http://localhost:5173`.
 
-### 4️⃣ Chrome Extension Setup (Optional)
+### 4. Chrome Extension Setup (Optional)
 
 1. Open Chrome and navigate to `chrome://extensions`
 2. Enable **Developer mode** (toggle in the top-right)
@@ -205,7 +205,7 @@ npm run dev
 
 ---
 
-## 👤 Demo Accounts
+## Demo Accounts
 
 The app seeds three demo users on first run:
 
@@ -217,7 +217,7 @@ The app seeds three demo users on first run:
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Authentication
 
@@ -230,26 +230,26 @@ The app seeds three demo users on first run:
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/chat` | ✅ Bearer | Send a message and receive an AI response (auto-logged) |
+| `POST` | `/api/chat` | Bearer required | Send a message and receive an AI response (auto-logged) |
 
 ### Audit Logs
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/api/audit-logs` | ✅ Audit Role | List audit log entries (paginated) |
-| `POST` | `/api/audit-logs` | ✅ Audit Role | Create a manual audit log entry |
-| `GET` | `/api/audit-logs/verify` | ✅ Audit Role | Verify the full hash chain integrity |
-| `GET` | `/api/audit-logs/cost` | ✅ Audit Role | Get cost analytics by model |
-| `GET` | `/api/audit-logs/export` | ✅ Audit Role | Export as JSON or CSV |
-| `GET` | `/api/audit-logs/{id}` | ✅ Audit Role | Get a specific entry by response ID |
-| `GET` | `/api/audit-logs/{id}/reviews` | ✅ Audit Role | Get all reviews for an entry |
-| `POST` | `/api/audit-logs/{id}/review` | ✅ Audit Role | Submit a review (approve/flag) |
+| `GET` | `/api/audit-logs` | Audit Role required | List audit log entries (paginated) |
+| `POST` | `/api/audit-logs` | Audit Role required | Create a manual audit log entry |
+| `GET` | `/api/audit-logs/verify` | Audit Role required | Verify the full hash chain integrity |
+| `GET` | `/api/audit-logs/cost` | Audit Role required | Get cost analytics by model |
+| `GET` | `/api/audit-logs/export` | Audit Role required | Export as JSON or CSV |
+| `GET` | `/api/audit-logs/{id}` | Audit Role required | Get a specific entry by response ID |
+| `GET` | `/api/audit-logs/{id}/reviews` | Audit Role required | Get all reviews for an entry |
+| `POST` | `/api/audit-logs/{id}/review` | Audit Role required | Submit a review (approve/flag) |
 
 ### Database
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/api/db/audit-log-entries` | ✅ Audit Role | Paginated, sortable, searchable table view |
+| `GET` | `/api/db/audit-log-entries` | Audit Role required | Paginated, sortable, searchable table view |
 
 ### Shadow AI Detector
 
@@ -265,7 +265,7 @@ The app seeds three demo users on first run:
 
 ---
 
-## 🔒 Security Notes
+## Security Notes
 
 > [!CAUTION]
 > **Never commit your `.env` file or API keys to version control.** Ensure `.env` is listed in your `.gitignore`.
@@ -278,9 +278,9 @@ The app seeds three demo users on first run:
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
-### Backend → Render / Railway / Heroku
+### Backend: Render / Railway / Heroku
 
 The backend includes a `Procfile` for Gunicorn-based deployments:
 
@@ -297,7 +297,7 @@ Set the following environment variables on your hosting platform:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `ALLOWED_ORIGINS` | Comma-separated list of frontend origins |
 
-### Frontend → Vercel
+### Frontend: Vercel
 
 The frontend includes a `vercel.json` for SPA routing. Deploy with:
 
@@ -310,7 +310,7 @@ Update `src/config.ts` with your deployed backend URL before deploying.
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ```bash
 cd backend
@@ -319,7 +319,7 @@ pytest tests/ -v
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technologies |
 |-------|-------------|
@@ -331,7 +331,7 @@ pytest tests/ -v
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how to get started:
 
@@ -345,14 +345,14 @@ Please ensure your code passes linting and existing tests before submitting.
 
 ---
 
-## 📄 License
+## License
 
 This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ for enterprise AI governance</strong>
+  <strong>Built for enterprise AI governance</strong>
   <br />
-  <a href="https://github.com/Abhinaykr6209/LegalBot">⭐ Star this repo</a> if you find it useful!
+  <a href="https://github.com/Abhinaykr6209/LegalBot">Star this repo</a> if you find it useful!
 </p>
