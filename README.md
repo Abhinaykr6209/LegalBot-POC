@@ -1,54 +1,188 @@
-# AI Audit Trail POC
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge" alt="Status" />
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License" />
+</p>
 
-A proof-of-concept system for logging, monitoring, and auditing AI system usage with cryptographic integrity verification.
+<h1 align="center">🛡️ AI Audit Trail</h1>
 
-## ⚠️ POC Disclaimer
+<p align="center">
+  <strong>Enterprise-grade AI governance platform with blockchain-style tamper-proof audit logging, role-based access control, and Shadow AI detection.</strong>
+</p>
 
-This is a **proof-of-concept implementation**, not production-ready software:
-- Uses mock authentication (no passwords, single static users)
-- OpenAI API key stored in plaintext `.env` (do not use with real secrets)
-- In-memory token storage (lost on server restart)
-- SQLite database (not suitable for high concurrency or large scale)
-- Chrome extension is unpacked development build
-- Intended for demonstration and evaluation purposes only
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-api-reference">API Reference</a> •
+  <a href="#-deployment">Deployment</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
 
-## Architecture
+---
+
+## ✨ Features
+
+### 🔗 Tamper-Proof Audit Chain
+Every AI interaction is logged with a **SHA-256 hash chain** — each entry references the previous entry's hash, making any retroactive modification instantly detectable. A built-in chain verification endpoint lets you validate the entire audit history in one call.
+
+### 💬 AI Chat Console
+A built-in chat interface powered by **OpenAI GPT-4o-mini** that automatically logs every prompt, response, model rationale, token usage, and cost — all linked to the authenticated user.
+
+### 🔍 Shadow AI Detector
+A **Chrome Extension** that passively monitors browser tabs for visits to external AI services (ChatGPT, Microsoft Copilot, GitHub Copilot). Only site-level metadata is recorded — **no prompts, responses, or page content are ever captured**.
+
+### 🔐 Role-Based Access Control
+Three built-in roles with differentiated permissions:
+
+| Role | Chat | Audit Trail | Database Viewer | Reviews |
+|------|:----:|:-----------:|:---------------:|:-------:|
+| **Analyst** | ✅ | ❌ | ❌ | ❌ |
+| **Reviewer** | ✅ | ✅ | ✅ | ✅ |
+| **Compliance Officer** | ✅ | ✅ | ✅ | ✅ |
+
+### 📊 Cost Analytics
+Track AI spend across models with per-response cost calculation. Filter by date range and view breakdowns by model version.
+
+### 📜 Audit Trail Certificates
+Generate shareable, verifiable certificates for individual audit entries — perfect for compliance documentation and regulatory reporting.
+
+### 📤 Data Export
+Export the complete audit trail as **JSON** or **CSV** with optional filters for source type and date range.
+
+### 👨‍⚖️ Human Review Workflow
+Compliance officers and reviewers can **approve** or **flag** any AI response, with the review itself logged as an immutable audit entry linked to the original response.
+
+---
+
+## 🏗 Architecture
 
 ```
-Auditor/
-├── backend/              # FastAPI server (Python)
-├── frontend/             # React + TypeScript web app
-├── extension/            # Chrome Manifest V3 extension (shadow detector)
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend                             │
+│              React 19 · TypeScript · Tailwind               │
+│              Vite · Framer Motion · Recharts                │
+│                   Deployed on Vercel                        │
+├─────────────────────────────────────────────────────────────┤
+│                       REST API                              │
+│                FastAPI · Uvicorn · Gunicorn                 │
+│                   Deployed on Render                        │
+├─────────────────────────────────────────────────────────────┤
+│                      Database                               │
+│             PostgreSQL (Supabase-hosted)                    │
+├─────────────────────────────────────────────────────────────┤
+│                  Browser Extension                          │
+│           Chrome Manifest V3 · Shadow AI Detector           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Project Structure
+
+```
+LegalBot/
+├── backend/
+│   ├── main.py                 # FastAPI app & route definitions
+│   ├── models.py               # SQLAlchemy models (User, AuditLogEntry, AuthSession)
+│   ├── auth.py                 # Authentication, registration, RBAC
+│   ├── audit_service.py        # Audit log creation & hash-chain verification
+│   ├── chat_service.py         # OpenAI chat integration with auto-logging
+│   ├── review_service.py       # Human review workflow
+│   ├── export_service.py       # JSON/CSV export with filtering
+│   ├── hashing.py              # SHA-256 hash chain utility
+│   ├── pricing.py              # Per-model token cost calculation
+│   ├── requirements.txt        # Python dependencies
+│   ├── Procfile                # Gunicorn process definition
+│   ├── runtime.txt             # Python 3.12 runtime
+│   └── tests/
+│       └── test_audit_log.py   # Audit log unit tests
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx             # Main app with tab navigation
+│   │   ├── LoginPage.tsx       # Authentication UI
+│   │   ├── ChatConsole.tsx     # AI chat interface
+│   │   ├── AuditTrail.tsx      # Audit log viewer & review UI
+│   │   ├── DatabaseViewer.tsx  # Raw database browser
+│   │   ├── Certificate.tsx     # Shareable audit certificates
+│   │   ├── NavBar.tsx          # Top navigation bar
+│   │   ├── AuthContext.tsx     # React auth context provider
+│   │   ├── config.ts           # API base URL config
+│   │   └── index.css           # Global styles (Tailwind)
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── vercel.json             # Vercel SPA routing
+│   └── tsconfig.json
+│
+├── extension/
+│   ├── manifest.json           # Chrome Manifest V3 config
+│   ├── background.js           # Tab monitoring service worker
+│   ├── popup.html              # Extension popup UI
+│   ├── popup.js                # Popup logic & auth
+│   └── styles.css              # Popup styling
+│
 └── README.md
 ```
 
-## Quick Start
+---
 
-### 1. Backend Setup
+## 🚀 Quick Start
+
+### Prerequisites
+
+| Tool | Version |
+|------|---------|
+| **Python** | 3.12+ |
+| **Node.js** | 18+ |
+| **PostgreSQL** | 14+ (or a Supabase project) |
+| **OpenAI API Key** | [Get one here](https://platform.openai.com/api-keys) |
+
+---
+
+### 1️⃣ Clone the Repository
+
+```bash
+git clone https://github.com/Abhinaykr6209/LegalBot.git
+cd LegalBot
+```
+
+### 2️⃣ Backend Setup
 
 ```bash
 cd backend
 
-# Create virtual environment
-python3 -m venv .venv
+# Create and activate virtual environment
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
 source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Copy .env.example to .env and set your OpenAI API key
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
-
-# Run server
-uvicorn main:app --reload
 ```
 
-Backend runs at: `http://localhost:8000`
+Create a `.env` file in the `backend/` directory:
 
-API docs: `http://localhost:8000/docs`
+```env
+OPENAI_API_KEY=sk-your-openai-api-key
+MODEL_NAME=gpt-4o-mini
+DATABASE_URL=postgresql://user:password@host:port/dbname
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
 
-### 2. Frontend Setup
+Start the development server:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+> The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for the interactive Swagger UI.
+
+### 3️⃣ Frontend Setup
 
 ```bash
 cd frontend
@@ -56,276 +190,169 @@ cd frontend
 # Install dependencies
 npm install
 
-# Start dev server
+# Start development server
 npm run dev
 ```
 
-Frontend runs at: `http://localhost:5173`
+> The frontend will be available at `http://localhost:5173`.
 
-### 3. Chrome Extension Setup
+### 4️⃣ Chrome Extension Setup (Optional)
 
-1. Open `chrome://extensions`
-2. Enable "Developer mode" (top right)
-3. Click "Load unpacked"
-4. Select the `/extension` folder
-5. Extension icon appears in Chrome toolbar
+1. Open Chrome and navigate to `chrome://extensions`
+2. Enable **Developer mode** (toggle in the top-right)
+3. Click **Load unpacked** and select the `extension/` folder
+4. The AI Audit Trail icon will appear in your toolbar
 
-## Usage
+---
 
-### Web Application
+## 👤 Demo Accounts
 
-1. **Sign In:**
-   - Click "User" dropdown on login screen
-   - Select demo user (Alice Chen, Bob Iyer, or Priya Reviewer)
-   - Click "Sign in"
-   - Token stored in sessionStorage (cleared on browser close)
+The app seeds three demo users on first run:
 
-2. **Chat Console:**
-   - Type message in text input
-   - Press Enter or click "Send"
-   - AI response logged to audit trail with response_id
-   - Each response shows its response_id for reference
+| Username | Password | Role | Access Level |
+|----------|----------|------|-------------|
+| `alice` | `demo123` | Compliance Officer | Full access (Chat + Audit + DB + Reviews) |
+| `bob` | `demo123` | Analyst | Chat Console only |
+| `priya` | `demo123` | Reviewer | Full access (Chat + Audit + DB + Reviews) |
 
-3. **Audit Trail:**
-   - Browse all audit entries newest-first
-   - Search by text, filter by source type, date range
-   - Click entry to expand and see all 12 fields
-   - View human reviews (approvals/flags) nested under entries
-   - Add your own review: Approve or Flag with comment
-   - "Verify Chain Integrity" button checks tamper-evidence
-   - Export as JSON or CSV
+---
 
-4. **Audit Certificate:**
-   - View printable certificate for any entry
-   - Shows all fields, including hashes for legal/counsel review
-   - Browser print or PDF export (File → Print → Save as PDF)
-
-### Chrome Extension
-
-1. Click extension icon in toolbar
-2. Sign in with demo user (same flow as web app)
-3. Shows "Detector: Active" status
-4. Automatically logs when you visit:
-   - ChatGPT (chatgpt.com, chat.openai.com)
-   - Microsoft Copilot (copilot.microsoft.com)
-   - GitHub Copilot (github.com/*copilot*)
-5. Logs appear in web app's Audit Trail with source_type="shadow_detector"
-
-## Field Mapping
-
-All audit log entries contain these 17 fields:
-
-| Field | Type | Description | Example |
-|-------|------|-------------|---------|
-| `id` | integer | Internal auto-increment row ID | 1 |
-| `response_id` | UUID string | Unique identifier for this entry | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
-| `timestamp_utc` | ISO 8601 string | Entry creation time in UTC | `2026-07-21T13:25:00.123456+00:00` |
-| `source_type` | string enum | Where this entry originated | `"chat_console"`, `"shadow_detector"`, `"review_event"` |
-| `user_id` | string | User/session identifier | `"u1"`, `"unknown"` |
-| `user_display_name` | string | Human-readable user name | `"Alice Chen"`, `"Unidentified browser session"` |
-| `ai_system` | string | AI system name | `"OpenAI ChatGPT API"`, `"ChatGPT (OpenAI)"`, `"N/A – human review event"` |
-| `model_version` | string | Model used or N/A | `"gpt-4o-mini"`, `"N/A"` |
-| `input_text` | text | User input (if available) | `"What is 2+2?"`, `"N/A"` |
-| `input_source` | string | Where input came from | `"chat_console_ui"`, `"browser_extension"`, `"N/A"` |
-| `policy_invoked` | string | Audit policy that applied | `"general_assistant_v1"`, `"Shadow AI Usage Policy v0.1"` |
-| `reasoning_summary` | text | AI reasoning or review comment | `"Simple arithmetic"`, `"Potential bias detected"`, `"N/A"` |
-| `output_text` | text | AI response or review comment | `"4"`, `"This looks good."`, `"N/A"` |
-| `downstream_action` | string | What happened to this entry | `"Response displayed to user in chat UI"`, `"Review recorded: approved"`, `"Tab opened: ChatGPT"` |
-| `parent_response_id` | UUID string or null | Links review_event to original entry | `"a1b2c3d4-e5f6-7890-abcd-ef1234567890"`, `null` |
-| `prev_hash` | SHA-256 hex string | Hash of previous entry in chain | `"43106ca51d1f20d0ae1672b723d062b01e1431661b6cb228b63876e00bfecd8d"`, `"GENESIS"` |
-| `entry_hash` | SHA-256 hex string | This entry's hash for tamper-evidence | `"95c6a3824d8e4e682c9ee24749fc6cd2258c802bc4b219831c179eb70d0013a8"` |
-
-## API Endpoints
+## 📡 API Reference
 
 ### Authentication
-- `GET /api/auth/users` — List demo users
-- `POST /api/auth/login` — Login and get Bearer token
 
-### Audit Log (all require Bearer token)
-- `GET /api/audit-logs?limit=10&offset=0` — List entries paginated
-- `GET /api/audit-logs/{response_id}` — Get single entry by ID
-- `GET /api/audit-logs/verify` — Verify hash chain integrity
-- `GET /api/audit-logs/export?format=json|csv` — Export with filters
-- `POST /api/audit-logs` — Create entry (testing only)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Login and receive auth token |
 
-### Chat (requires Bearer token)
-- `POST /api/chat` — Send message, get AI response, log to audit trail
+### Chat
 
-### Reviews (requires Bearer token)
-- `GET /api/audit-logs/{response_id}/reviews` — Get reviews for entry
-- `POST /api/audit-logs/{response_id}/review` — Add approval/flag review
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/chat` | ✅ Bearer | Send a message and receive an AI response (auto-logged) |
 
-### Shadow Detector (auth optional)
-- `POST /api/detector/event` — Log browser extension event
+### Audit Logs
 
-## Key Features
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/audit-logs` | ✅ Audit Role | List audit log entries (paginated) |
+| `POST` | `/api/audit-logs` | ✅ Audit Role | Create a manual audit log entry |
+| `GET` | `/api/audit-logs/verify` | ✅ Audit Role | Verify the full hash chain integrity |
+| `GET` | `/api/audit-logs/cost` | ✅ Audit Role | Get cost analytics by model |
+| `GET` | `/api/audit-logs/export` | ✅ Audit Role | Export as JSON or CSV |
+| `GET` | `/api/audit-logs/{id}` | ✅ Audit Role | Get a specific entry by response ID |
+| `GET` | `/api/audit-logs/{id}/reviews` | ✅ Audit Role | Get all reviews for an entry |
+| `POST` | `/api/audit-logs/{id}/review` | ✅ Audit Role | Submit a review (approve/flag) |
 
-### 1. **Immutable Hash Chain**
-- Each entry includes SHA-256 hash of its content + previous entry's hash
-- `GET /api/audit-logs/verify` walks entire chain and reports tampering
-- Reviews are logged as new chained entries (never edit originals)
+### Database
 
-### 2. **Append-Only Design**
-- No UPDATE or DELETE operations on audit entries
-- Reviews create new entries that reference parents via `parent_response_id`
-- Original chat responses never modified (chain integrity preserved)
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/db/audit-log-entries` | ✅ Audit Role | Paginated, sortable, searchable table view |
 
-### 3. **Optional Authentication**
-- Most endpoints require Bearer token
-- Shadow detector events logged even without auth (as "Unidentified")
-- Token storage: sessionStorage (frontend), chrome.storage.local (extension), in-memory (backend)
+### Shadow AI Detector
 
-### 4. **Privacy-First Shadow Detector**
-- Chrome extension reads ONLY tab URL and title
-- NO content script injection, NO DOM access, NO keystroke logging
-- Monitors: ChatGPT, Microsoft Copilot, GitHub Copilot
-- Debounced: doesn't spam duplicate logs for same page load
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/detector/event` | Optional | Log a Shadow AI browser detection event |
 
-### 5. **Human Review Workflow**
-- Any user can approve or flag an entry with a comment
-- Reviews create new entries linked to originals
-- Green checkmark (approved) or red flag badge shown in UI
-- All reviews are queryable and exportable
+### Health
 
-### 6. **Export & Certificates**
-- Export audit trail as JSON or CSV
-- Filter by source_type, date range
-- Audit Certificate view: printable/PDF-able single-entry detail
-- All 17 fields shown with hashes for legal/counsel review
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check with UTC timestamp |
 
-## Demo Users
+---
 
-| ID | Name | Role |
-|----|------|------|
-| u1 | Alice Chen | compliance_officer |
-| u2 | Bob Iyer | analyst |
-| u3 | Priya Reviewer | reviewer |
+## 🔒 Security Notes
 
-No passwords required (POC only).
+> [!CAUTION]
+> **Never commit your `.env` file or API keys to version control.** Ensure `.env` is listed in your `.gitignore`.
 
-## Directory Layout
+- All passwords are hashed using **bcrypt** via Passlib
+- Session tokens are generated with `secrets.token_hex(32)` (256-bit entropy)
+- Legacy PBKDF2-SHA256 hashes are auto-migrated to bcrypt on login
+- CORS origins are configurable via the `ALLOWED_ORIGINS` environment variable
+- The Chrome extension captures **only** tab URL and title metadata — no page content, keystrokes, or form data
+
+---
+
+## 🚢 Deployment
+
+### Backend → Render / Railway / Heroku
+
+The backend includes a `Procfile` for Gunicorn-based deployments:
 
 ```
-backend/
-├── main.py                 # FastAPI app + endpoints
-├── models.py               # SQLAlchemy + database setup
-├── auth.py                 # Auth logic (demo users, tokens)
-├── audit_service.py        # Create/query audit entries
-├── chat_service.py         # OpenAI integration
-├── review_service.py       # Review workflow
-├── export_service.py       # Export (JSON/CSV)
-├── hashing.py              # Hash chain computation
-├── requirements.txt        # Python dependencies
-├── .env.example            # Example env vars
-└── audit.db                # SQLite database (created on first run)
-
-frontend/
-├── src/
-│   ├── App.tsx             # Main app + tab navigation
-│   ├── AuthContext.tsx     # Auth state management
-│   ├── LoginPage.tsx       # Login UI
-│   ├── NavBar.tsx          # Top navigation
-│   ├── ChatConsole.tsx     # Chat UI
-│   ├── AuditTrail.tsx      # Audit trail browser + reviews
-│   ├── Certificate.tsx     # Printable audit certificate
-│   ├── main.tsx            # React entry point
-│   └── index.css           # Tailwind CSS
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
-
-extension/
-├── manifest.json           # Chrome Manifest V3
-├── background.js           # Service worker (detector logic)
-├── popup.html              # Popup UI
-├── popup.js                # Popup logic
-└── styles.css              # Popup styling
+web: gunicorn -w 2 -k uvicorn.workers.UvicornWorker main:app
 ```
 
-## Tech Stack
+Set the following environment variables on your hosting platform:
 
-**Backend:**
-- FastAPI (Python web framework)
-- SQLAlchemy (ORM)
-- SQLite (embedded database)
-- OpenAI API (chat completions)
-- Python 3.14+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | Your OpenAI API key |
+| `MODEL_NAME` | Model to use (default: `gpt-4o-mini`) |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `ALLOWED_ORIGINS` | Comma-separated list of frontend origins |
 
-**Frontend:**
-- React 19
-- TypeScript
-- Vite (build tool)
-- Tailwind CSS
-- Session storage for auth
+### Frontend → Vercel
 
-**Extension:**
-- Chrome Manifest V3
-- Vanilla JavaScript
-- Service Workers
-- chrome.storage.local
+The frontend includes a `vercel.json` for SPA routing. Deploy with:
 
-## Security Notes
-
-- This POC stores the OpenAI API key in plaintext `.env` — never do this in production
-- Auth tokens are in-memory (backend) and sessionStorage (frontend) — lost on restart
-- No HTTPS; runs on localhost only
-- No rate limiting, input validation, or CSRF protection
-- Extension has broad host permissions — only for POC demo
-
-For production, implement:
-- Environment-based secrets (Vault, AWS Secrets Manager, etc.)
-- Proper database (PostgreSQL, etc.)
-- Real authentication (OAuth, SAML, etc.)
-- Encryption at rest and in transit
-- Rate limiting and DDoS protection
-- Input validation and SQL injection prevention
-- Audit logging for the audit system itself
-
-## Troubleshooting
-
-### Backend won't start
-```bash
-# Ensure port 8000 is free
-lsof -i :8000
-# Activate venv
-source .venv/bin/activate
-```
-
-### Frontend compilation errors
 ```bash
 cd frontend
-npm install
-npm run build  # Check for TypeScript errors
+npx vercel --prod
 ```
 
-### Extension not detecting sites
-- Ensure background service worker is active (check chrome://extensions)
-- Check browser console for errors (chrome://extensions > Details > Errors)
-- Verify localhost:8000 backend is running
+Update `src/config.ts` with your deployed backend URL before deploying.
 
-### Chat not logging
-- Check OpenAI API key in `.env`
-- Check network tab for failed POST to /api/chat
-- Ensure you're signed in (Bearer token present)
+---
 
-### Verify chain fails
-- Check if entries were manually deleted from database (shouldn't happen)
-- Rebuild database: delete `audit.db` and restart backend
+## 🧪 Running Tests
 
-## Next Steps (Not Included)
+```bash
+cd backend
+pytest tests/ -v
+```
 
-- Role-based access control (RBAC): gate review to "reviewer" role only
-- Persistent browser sessions: token refresh, long-lived sessions
-- Real authentication: OAuth 2.0, SAML, LDAP
-- Database encryption and key rotation
-- Elasticsearch integration for full-text search on audit trail
-- Webhooks for alerts (e.g., flag event → Slack notification)
-- Compliance reporting: automated PDF export for SOC2, GDPR, etc.
-- Multi-tenancy: separate audit trails per customer/org
-- Rate limiting and quota management per user
-- Anomaly detection: flag unusual patterns in AI usage
-- Integration with security tools: SIEM, threat intelligence, etc.
+---
 
-## License
+## 🛠 Tech Stack
 
-POC — not for production use.
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 19, TypeScript, Tailwind CSS 4, Vite 8, Framer Motion, Recharts, Lucide Icons |
+| **Backend** | Python 3.12, FastAPI, SQLAlchemy, OpenAI SDK, Passlib + bcrypt |
+| **Database** | PostgreSQL (Supabase) |
+| **Extension** | Chrome Manifest V3, Service Workers |
+| **Deployment** | Vercel (frontend), Render/Railway (backend) |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/your-feature`
+3. **Commit** your changes: `git commit -m "Add your feature"`
+4. **Push** to the branch: `git push origin feature/your-feature`
+5. **Open** a Pull Request
+
+Please ensure your code passes linting and existing tests before submitting.
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ for enterprise AI governance</strong>
+  <br />
+  <a href="https://github.com/Abhinaykr6209/LegalBot">⭐ Star this repo</a> if you find it useful!
+</p>
