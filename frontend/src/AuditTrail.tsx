@@ -17,6 +17,10 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { ChevronDown, Flag, Check, Download, RefreshCw, ShieldAlert, ShieldCheck, Activity, Database, DollarSign, Target, Zap } from 'lucide-react'
+import dayjs, { Dayjs } from "dayjs";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 
 type AuditEntry = {
   id: number
@@ -54,8 +58,8 @@ export function AuditTrail() {
   // Filters
   const [searchText, setSearchText] = useState('')
   const [filterSourceType, setFilterSourceType] = useState('')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
+  const [fromDate, setFromDate] = useState<Dayjs | null>(null)
+  const [toDate, setToDate] = useState<Dayjs | null>(null)
   const [error, setError] = useState('')
 
   // Reviews
@@ -173,8 +177,8 @@ export function AuditTrail() {
   const handleExport = async (format: 'json' | 'csv') => {
     const params = new URLSearchParams({ format })
     if (filterSourceType) params.append('source_type', filterSourceType)
-    if (fromDate) params.append('from_date', fromDate)
-    if (toDate) params.append('to_date', toDate)
+    if (fromDate) params.append("from_date", fromDate.toISOString())
+    if (toDate) params.append("to_date", toDate.toISOString())
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/audit-logs/export?${params}`, {
@@ -196,10 +200,23 @@ export function AuditTrail() {
   const filteredEntries = useMemo(() => entries
     .filter((entry) => entry.source_type !== 'review_event')
     .filter((entry) => {
-      const matchesSearch = !searchText || entry.input_text.toLowerCase().includes(searchText.toLowerCase()) || entry.output_text.toLowerCase().includes(searchText.toLowerCase())
+      const matchesSearch =
+  !searchText ||
+  (entry.input_text ?? "").toLowerCase().includes(searchText.toLowerCase()) ||
+  (entry.output_text ?? "").toLowerCase().includes(searchText.toLowerCase()) ||
+  (entry.user_display_name ?? "").toLowerCase().includes(searchText.toLowerCase()) ||
+  (entry.source_type ?? "").toLowerCase().includes(searchText.toLowerCase()) ||
+  (entry.ai_system ?? "").toLowerCase().includes(searchText.toLowerCase());
       const matchesSourceType = !filterSourceType || entry.source_type === filterSourceType
-      const matchesFromDate = !fromDate || entry.timestamp_utc >= fromDate
-      const matchesToDate = !toDate || entry.timestamp_utc <= toDate
+      const matchesFromDate =
+  !fromDate ||
+  dayjs(entry.timestamp_utc).isAfter(fromDate) ||
+  dayjs(entry.timestamp_utc).isSame(fromDate)
+
+const matchesToDate =
+  !toDate ||
+  dayjs(entry.timestamp_utc).isBefore(toDate) ||
+  dayjs(entry.timestamp_utc).isSame(toDate)
       return matchesSearch && matchesSourceType && matchesFromDate && matchesToDate
     }), [entries, searchText, filterSourceType, fromDate, toDate])
 
@@ -361,12 +378,35 @@ export function AuditTrail() {
             </select>
             <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
-          <div>
-            <input type="datetime-local" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none" />
-          </div>
-          <div>
-            <input type="datetime-local" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:bg-white focus:outline-none" />
-          </div>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+  <DateTimePicker
+    label="From"
+    value={fromDate}
+    onChange={(newValue) => setFromDate(newValue)}
+    slotProps={{
+      textField: {
+        size: "small",
+        fullWidth: true,
+      },
+    }}
+  />
+</LocalizationProvider>
+
+<LocalizationProvider dateAdapter={AdapterDayjs}>
+  <DateTimePicker
+    label="To"
+    value={toDate}
+    onChange={(newValue) => setToDate(newValue)}
+    slotProps={{
+      textField: {
+        size: "small",
+        fullWidth: true,
+      },
+    }}
+  />
+</LocalizationProvider>
+
+
         </div>
       </div>
 
@@ -515,7 +555,7 @@ export function AuditTrail() {
                             <span className="font-bold text-slate-900 text-sm">{entry.user_display_name}</span>
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide font-bold text-slate-500 border border-slate-200">{entry.source_type}</span>
                             <Link to={`/certificate/${entry.response_id}`} onClick={(e) => e.stopPropagation()} className="rounded-md bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-500 border border-slate-200 hover:bg-blue-50 hover:text-blue-600">
-                              {entry.response_id.slice(0, 8)}...
+                             View Audit
                             </Link>
                           </div>
 

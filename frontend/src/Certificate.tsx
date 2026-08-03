@@ -96,8 +96,8 @@ export function Certificate() {
   if (!entry) return null
 
   return (
-    <div className="min-h-[100dvh] bg-[#F4F7FB] p-4 py-8 md:p-8 lg:py-12">
-      <div className="certificate-document mx-auto w-full max-w-4xl bg-white border border-slate-200 shadow-sm p-6 md:p-12">
+    <div className="bg-[#F4F7FB] p-2 print:p-0">
+      <div className="certificate-document mx-auto w-[210mm] min-h-[297mm] bg-white border border-slate-200 shadow-sm p-8">
 
         {/* Header */}
         <div className="mb-8 border-b border-slate-100 pb-6">
@@ -287,30 +287,62 @@ export function Certificate() {
       </div>
 
       {/* Print Styles */}
-      <style>{`
-        @media print {
-          body {
-            background: white !important;
-          }
-          .certificate-document {
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            max-width: 100% !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          /* Ensure breaks don't happen inside cards */
-          .rounded-xl {
-            break-inside: avoid;
-          }
-        }
-      `}</style>
+<style>{`
+@media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .certificate-document,
+  .certificate-document * {
+    visibility: visible;
+  }
+
+  .certificate-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 194mm !important;
+    max-height: 281mm !important;
+    margin: 0 auto !important;
+    padding: 8mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .rounded-xl {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+`}</style>
     </div>
   )
 }
