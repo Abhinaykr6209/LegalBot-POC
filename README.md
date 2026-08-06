@@ -55,6 +55,15 @@ Export the complete audit trail as **JSON** or **CSV** with optional filters for
 ### Human Review Workflow
 Compliance officers and reviewers can **approve** or **flag** any AI response, with the review itself logged as an immutable audit entry linked to the original response.
 
+### Approval Dashboard
+An interactive analytics dashboard built to monitor governance metrics, review statuses, and approval workflows in real time:
+* Unified Data Model: Dashboard metrics (summary stats, reviewer performance figures, and approval history) are calculated directly from the immutable chain of review event logs. This ensures that the dashboard state is always consistent with the audit ledger.
+* Dynamic Visualizations: Displays status distribution pie charts, reviewer activity bar charts, and a daily approval trend area chart.
+* Dynamic Filters: Status filter dropdowns, chart legends, and pie charts dynamically parse unique status values directly from the database, eliminating hardcoded categories.
+* Interactive Search and Contrast: The query parameters and filtering selects feature high-contrast styling (such as clear text colors on selectable options) for accessibility.
+* Full-Depth Timeline: Features a scrollable, full-history timeline of all approval activities and transitions.
+* Enhanced Trend Visualization: Graph axes dynamically format timestamps to user-friendly date labels (such as 1 Aug) instead of raw database ISO strings.
+
 ---
 
 ## Architecture
@@ -103,6 +112,7 @@ LegalBot/
 │   │   ├── App.tsx             # Main app with tab navigation
 │   │   ├── LoginPage.tsx       # Authentication UI
 │   │   ├── ChatConsole.tsx     # AI chat interface
+│   │   ├── ApprovalDashboard.tsx # Metrics, charts & approval tracker
 │   │   ├── AuditTrail.tsx      # Audit log viewer & review UI
 │   │   ├── DatabaseViewer.tsx  # Raw database browser
 │   │   ├── Certificate.tsx     # Shareable audit certificates
