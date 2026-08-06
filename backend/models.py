@@ -57,6 +57,34 @@ class AuditLogEntry(Base):
     cost_per_response = Column(Float, nullable=True)
     prev_hash = Column(String, nullable=False)
     entry_hash = Column(String, nullable=False)
+        # ===== Approval Workflow =====
+
+    approval_status = Column(
+        String,
+        nullable=False,
+        default="Pending",
+        server_default="Pending"
+    )
+
+    approved_by = Column(
+        String,
+        nullable=True
+    )
+
+    approved_at = Column(
+        DateTime(timezone=True),
+        nullable=True
+    )
+
+    review_comment = Column(
+        Text,
+        nullable=True
+    )
+
+    flagged_reason = Column(
+        Text,
+        nullable=True
+    )
 
 
 class AuthSession(Base):
@@ -70,6 +98,8 @@ class AuthSession(Base):
 def _migrate_old_schema():
     """Rename decision_id columns to response_id if they still exist."""
     inspector = inspect(engine)
+    if not inspector.has_table("audit_log_entries"):
+        return
     columns = {c["name"] for c in inspector.get_columns("audit_log_entries")}
     with engine.connect() as conn:
         if "decision_id" in columns:
@@ -78,6 +108,36 @@ def _migrate_old_schema():
             conn.execute(text("ALTER TABLE audit_log_entries RENAME COLUMN parent_decision_id TO parent_response_id"))
         if "cost_per_response" not in columns:
             conn.execute(text("ALTER TABLE audit_log_entries ADD COLUMN cost_per_response DOUBLE PRECISION"))
+        if "approval_status" not in columns:
+            conn.execute(text("""
+                ALTER TABLE audit_log_entries
+                ADD COLUMN approval_status VARCHAR(20)
+                DEFAULT 'Pending'
+            """))
+
+        if "approved_by" not in columns:
+            conn.execute(text("""
+                ALTER TABLE audit_log_entries
+                ADD COLUMN approved_by VARCHAR(100)
+            """))
+
+        if "approved_at" not in columns:
+            conn.execute(text("""
+                ALTER TABLE audit_log_entries
+                ADD COLUMN approved_at TIMESTAMP
+            """))
+
+        if "review_comment" not in columns:
+            conn.execute(text("""
+                ALTER TABLE audit_log_entries
+                ADD COLUMN review_comment TEXT
+            """))
+
+        if "flagged_reason" not in columns:
+            conn.execute(text("""
+                ALTER TABLE audit_log_entries
+                ADD COLUMN flagged_reason TEXT
+            """))
         conn.commit()
 
 

@@ -8,8 +8,9 @@ import { ChatConsole } from './ChatConsole'
 import { AuditTrail } from './AuditTrail'
 import { DatabaseViewer } from './DatabaseViewer'
 import { Certificate } from './Certificate'
+import ApprovalDashboard from './ApprovalDashboard'
 
-type Tab = 'chat' | 'audit' | 'database'
+type Tab = 'chat' | 'audit' | 'database' | 'approval'
 
 const AUDIT_ROLES = new Set(['compliance_officer', 'reviewer'])
 
@@ -87,23 +88,44 @@ function AppContent() {
               </p>
             )}
             {canViewAudit && (
-              <button
-                onClick={() => setActiveTab('database')}
-                className={`relative pb-3 text-sm font-semibold transition-colors ${
-                  showTab === 'database'
-                    ? 'text-blue-600'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  Database
-                </div>
-                {showTab === 'database' && (
-                  <span className="absolute bottom-0 left-0 h-0.5 w-full rounded-t-full bg-blue-600" />
-                )}
-              </button>
-            )}
+  <>
+    <button
+      onClick={() => setActiveTab('database')}
+      className={`relative pb-3 text-sm font-semibold transition-colors ${
+        showTab === 'database'
+          ? 'text-blue-600'
+          : 'text-slate-500 hover:text-slate-900'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <Database className="h-4 w-4" />
+        Database
+      </div>
+
+      {showTab === 'database' && (
+        <span className="absolute bottom-0 left-0 h-0.5 w-full rounded-t-full bg-blue-600" />
+      )}
+    </button>
+
+    <button
+      onClick={() => setActiveTab('approval')}
+      className={`relative pb-3 text-sm font-semibold transition-colors ${
+        showTab === 'approval'
+          ? 'text-blue-600'
+          : 'text-slate-500 hover:text-slate-900'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4" />
+        Approval Dashboard
+      </div>
+
+      {showTab === 'approval' && (
+        <span className="absolute bottom-0 left-0 h-0.5 w-full rounded-t-full bg-blue-600" />
+      )}
+    </button>
+  </>
+)}
           </div>
         </div>
       </div>
@@ -128,6 +150,11 @@ function AppContent() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DatabaseViewer />
           </div>
+        )}
+        {canViewAudit && showTab === 'approval' && (
+         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <ApprovalDashboard />
+         </div>
         )}
       </main>
     </div>

@@ -107,6 +107,22 @@ class ReviewRequest(BaseModel):
     status: str  # "approved" or "flagged"
     comment: str
 
+class DashboardSummary(BaseModel):
+    total: int
+    approved: int
+    pending: int
+    flagged: int
+
+
+class ApprovalRecord(BaseModel):
+    response_id: str
+    prompt: str
+    created_by: str
+    approved_by: str | None = None
+    status: str
+    approved_at: str | None = None
+    timestamp_utc: str | None = None
+
 
 class DbQueryResponse(BaseModel):
     entries: list[AuditLogResponse]
@@ -384,6 +400,171 @@ def submit_review(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    
+@app.get("/api/dashboard/summary", response_model=DashboardSummary)
+def dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+    # Fetch all main (non-review) entry response_ids
+    main_ids = {
+        row.response_id
+        for row in db.query(AuditLogEntry.response_id).filter(
+            AuditLogEntry.source_type != "review_event"
+        ).all()
+    }
+    total = len(main_ids)
+
+    # Fetch all review_event entries that belong to main entries
+    review_events = (
+        db.query(AuditLogEntry.parent_response_id, AuditLogEntry.downstream_action)
+        .filter(
+            AuditLogEntry.source_type == "review_event",
+            AuditLogEntry.parent_response_id.isnot(None),
+        )
+        .all()
+    )
+
+    # Derive status sets — mirrors Audit Trail client-side logic
+    flagged_ids: set[str] = set()
+    reviewed_ids: set[str] = set()
+    for parent_id, action in review_events:
+        if parent_id in main_ids:
+            reviewed_ids.add(parent_id)
+            if "flagged" in (action or "").lower():
+                flagged_ids.add(parent_id)
+
+    approved = len(reviewed_ids - flagged_ids)
+    flagged = len(flagged_ids)
+    pending = total - len(reviewed_ids)
+
+    return DashboardSummary(
+        total=total,
+        approved=approved,
+        pending=pending,
+        flagged=flagged,
+    )
+
+@app.get("/api/dashboard/records", response_model=list[ApprovalRecord])
+def approval_records(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+    # Fetch all main (non-review) entries
+    rows = (
+        db.query(AuditLogEntry)
+        .filter(AuditLogEntry.source_type != "review_event")
+        .order_by(AuditLogEntry.id.desc())
+        .all()
+    )
+
+    if not rows:
+        return []
+
+    # Batch-fetch all review_event entries for these response_ids
+    response_ids = [r.response_id for r in rows]
+    review_events = (
+        db.query(AuditLogEntry)
+        .filter(
+            AuditLogEntry.source_type == "review_event",
+            AuditLogEntry.parent_response_id.in_(response_ids),
+        )
+        .order_by(AuditLogEntry.timestamp_utc.asc())
+        .all()
+    )
+
+    # Group review_events by parent response_id
+    reviews_by_parent: dict[str, list[AuditLogEntry]] = defaultdict(list)
+    for re in review_events:
+        reviews_by_parent[re.parent_response_id].append(re)
+
+    records = []
+    for r in rows:
+        entry_reviews = reviews_by_parent.get(r.response_id, [])
+
+        # Mirrors Audit Trail logic: flag takes precedence
+        flag_review = next(
+            (re for re in entry_reviews if "flagged" in (re.downstream_action or "").lower()),
+            None,
+        )
+        if flag_review:
+            status = "Flagged"
+            latest_review = flag_review
+        elif entry_reviews:
+            status = "Approved"
+            latest_review = entry_reviews[-1]  # most recent review
+        else:
+            status = "Pending"
+            latest_review = None
+
+        records.append(
+            ApprovalRecord(
+                response_id=r.response_id,
+                prompt=r.input_text[:80],
+                created_by=r.user_display_name,
+                approved_by=latest_review.user_display_name if latest_review else None,
+                status=status,
+                approved_at=latest_review.timestamp_utc if latest_review else None,
+                timestamp_utc=r.timestamp_utc,
+            )
+        )
+
+    return records
+
+@app.get("/api/dashboard/reviewer-performance")
+def reviewer_performance(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+    # Derive reviewer activity from review_event entries — mirrors Audit Trail logic
+    rows = (
+        db.query(
+            AuditLogEntry.user_display_name,
+            func.count(AuditLogEntry.id),
+        )
+        .filter(AuditLogEntry.source_type == "review_event")
+        .group_by(AuditLogEntry.user_display_name)
+        .all()
+    )
+
+    return [
+        {
+            "reviewer": reviewer,
+            "reviews": count,
+        }
+        for reviewer, count in rows
+    ]
+
+@app.get("/api/dashboard/trend")
+def approval_trend(
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(require_audit_access),
+):
+
+    rows = (
+        db.query(AuditLogEntry)
+        .filter(AuditLogEntry.source_type != "review_event")
+        .order_by(AuditLogEntry.timestamp_utc.asc())
+        .all()
+    )
+
+    trend = {}
+
+    for row in rows:
+        day = row.timestamp_utc[:10]
+
+        if day not in trend:
+            trend[day] = 0
+
+        trend[day] += 1
+
+    return [
+        {
+            "day": day,
+            "count": count
+        }
+        for day, count in trend.items()
+    ]
 
 @app.post("/api/detector/event", response_model=AuditLogResponse)
 def log_detector_event(
